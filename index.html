@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FESTABA 2027 - Satu Panggung Satu Cerita</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- JsBarcode untuk E-Tiket -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .theater-bg { background: radial-gradient(circle at center, #1e293b 0%, #020617 100%); }
+        .gold-gradient { background: linear-gradient(to right, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .seat-btn { transition: all 0.2s ease; width: 100%; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; border-radius: 4px; }
+        .seat-btn:disabled { background-color: #ef4444; cursor: not-allowed; opacity: 0.5; }
+        .seat-selected { background-color: #10b981 !important; transform: scale(1.1); box-shadow: 0 0 10px #10b981; color: white;}
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeUp 0.6s ease-out forwards; }
+        .seat-scroll::-webkit-scrollbar { height: 8px; }
+        .seat-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+    </style>
+</head>
+<body class="theater-bg min-h-screen">
+
+    <audio id="jingleAudio" loop>
+        <source src="JINGLE FESTABA.mp3" type="audio/mpeg"> 
+        <source src="FESTABA.mp3" type="audio/mpeg"> 
+    </audio>
+
+    <!-- Intro Overlay -->
+    <div id="introOverlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black bg-opacity-95 backdrop-blur-md transition-opacity duration-700">
+        <div class="flex gap-4 mb-6 items-center justify-center">
+            <img src="WhatsApp Image 2024-06-10 at 12.01.05.jpeg" alt="SMPN 3 Balikpapan" class="w-16 h-16 object-contain bg-white rounded-full p-1">
+            <img src="FESTABA.jpeg" alt="Logo FESTABA" class="w-24 h-24 object-contain animate-pulse rounded-full">
+            <img src="logo Semur fix.png" alt="Sanggar Seni Semut Merah" class="w-16 h-16 object-contain bg-white rounded-full p-1">
+        </div>
+        <h1 class="text-4xl md:text-6xl font-black mb-2 text-center gold-gradient">FESTABA 2027</h1>
+        <p class="text-xl mb-8 tracking-widest text-gray-300">Satu Panggung Satu Cerita</p>
+        <button onclick="startApp()" class="px-8 py-3 bg-amber-600 hover:bg-amber-500 rounded-full font-bold text-white tracking-wider shadow-[0_0_15px_rgba(245,158,11,0.5)] transition-all">
+            MASUK KE TEATER
+        </button>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-40 bg-slate-900 bg-opacity-90 backdrop-blur border-b border-slate-800 p-4 shadow-lg">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img src="FESTABA.jpeg" alt="Logo Festaba" class="w-10 h-10 rounded-full object-cover">
+                <span class="font-bold text-xl tracking-wider gold-gradient hidden md:block">FESTABA 2027</span>
+            </div>
+            
+            <div class="hidden lg:flex items-center gap-2 bg-slate-800 px-4 py-1.5 rounded-full border border-slate-700 shadow-inner">
+                <span class="text-amber-400">📅</span>
+                <span id="realtimeDate" class="text-xs font-semibold text-slate-300">Memuat...</span>
+                <span class="text-slate-500 mx-1">|</span>
+                <span class="text-emerald-400">⏰</span>
+                <span id="realtimeClock" class="text-xs font-bold text-white font-mono tracking-widest">--:--:--</span>
+            </div>
+
+            <div class="flex gap-2 md:gap-4 text-xs md:text-base font-semibold items-center">
+                <button onclick="switchView('home')" class="hover:text-amber-400 transition" id="nav-home">Beranda</button>
+                <button onclick="switchView('cek-tiket')" class="hover:text-amber-400 transition" id="nav-cek-tiket">Cek E-Tiket</button>
+                <button onclick="switchView('admin')" class="hover:text-amber-400 transition text-red-400 bg-slate-800 px-3 py-1 rounded" id="nav-admin">Admin</button>
+                <button onclick="toggleAudio()" id="btnAudio" class="ml-2 bg-red-900 p-2 rounded-full hover:bg-slate-700 transition text-white" title="Play/Pause Music">🔇</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto p-4 md:p-6 pb-20">
+        <!-- VIEW: HOME -->
+        <div id="homeView" class="view-section animate-fade">
+            <div class="text-center mb-10 mt-4">
+                <h2 class="text-3xl font-bold mb-2">Jadwal Pertunjukan</h2>
+                <p class="text-slate-400">Pilih kelas, pesan tiketmu, dan saksikan mahakarya teater SMPN 3 Balikpapan.</p>
+            </div>
+            <div id="classGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+        </div>
+
+        <!-- VIEW: BOOKING -->
+        <div id="bookingView" class="view-section hidden animate-fade">
+            <button onclick="switchView('home')" class="mb-4 text-amber-500 hover:text-amber-400 flex items-center gap-2 font-bold bg-slate-800 px-4 py-2 rounded-lg">← Kembali ke Jadwal</button>
+            
+            <div class="bg-slate-800 rounded-xl p-4 md:p-6 shadow-2xl border border-slate-700">
+                <div id="bookingHeader" class="text-center mb-8 border-b border-slate-700 pb-4"></div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2">
+                        <h3 class="text-xl font-bold mb-4 text-amber-400 flex justify-between items-center">
+                            Pilih Kursi (Panggung di Depan)
+                            <span class="text-xs text-slate-400 font-normal">*Bisa pilih > 1 kursi</span>
+                        </h3>
+                        
+                        <div class="w-full bg-gradient-to-r from-slate-900 via-slate-700 to-slate-900 py-3 text-center text-sm font-bold tracking-[0.4em] text-slate-300 mb-6 rounded border border-slate-600 shadow-inner">PANGGUNG UTAMA</div>
+                        
+                        <div class="flex gap-2 mb-4">
+                            <button onclick="renderSeats('VIP')" id="tab-VIP" class="flex-1 bg-slate-700 py-3 rounded font-bold text-sm shadow border border-slate-600 transition">VIP (Rp 30k)</button>
+                            <button onclick="renderSeats('REG')" id="tab-REG" class="flex-1 bg-slate-700 py-3 rounded font-bold text-sm shadow border border-slate-600 transition">Reguler (Rp 20k)</button>
+                            <button onclick="renderSeats('UMUM')" id="tab-UMUM" class="flex-1 bg-slate-700 py-3 rounded font-bold text-sm shadow border border-slate-600 transition">Umum (Rp 10k)</button>
+                        </div>
+                        
+                        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700 overflow-x-auto seat-scroll">
+                            <div class="min-w-[600px] mb-2 flex justify-between text-xs text-slate-400 font-bold px-2">
+                                <span class="w-[48%] text-center border-b border-slate-700 pb-1">Sayap Kiri (1-10)</span>
+                                <span class="w-[48%] text-center border-b border-slate-700 pb-1">Sayap Kanan (11-20)</span>
+                            </div>
+                            <div id="seatMap" class="min-w-[600px]"></div>
+                        </div>
+
+                        <div class="mt-4 flex justify-center gap-4 text-xs">
+                            <span class="flex items-center gap-1"><div class="w-4 h-4 bg-slate-700 rounded border border-slate-500"></div> Tersedia</span>
+                            <span class="flex items-center gap-1"><div class="w-4 h-4 bg-emerald-500 rounded"></div> Dipilih</span>
+                            <span class="flex items-center gap-1"><div class="w-4 h-4 bg-red-500 rounded"></div> Terisi</span>
+                        </div>
+                    </div>
+
+                    <form id="orderForm" onsubmit="submitOrder(event)" class="space-y-4 bg-slate-900 p-5 rounded-lg border border-slate-700 h-fit sticky top-24">
+                        <div class="border-b border-slate-700 pb-3 mb-3 bg-slate-800 p-3 rounded">
+                            <p class="text-xs text-slate-400 mb-1">Kursi Terpilih:</p>
+                            <p id="selectedSeatLabel" class="text-sm font-bold text-emerald-400 min-h-[1.5rem] break-words">-</p>
+                            <p class="text-xs text-slate-400 mt-3 border-t border-slate-700 pt-2">Total Harga:</p>
+                            <p id="totalPriceLabel" class="text-2xl font-black gold-gradient">Rp 0</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm mb-1 text-slate-300">Nama Lengkap</label>
+                            <input type="text" id="buyerName" required class="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:ring-2 focus:ring-amber-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1 text-slate-300">No WhatsApp (Aktif)</label>
+                            <input type="number" id="buyerWA" required class="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:ring-2 focus:ring-amber-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1 text-slate-300">Metode Pembayaran</label>
+                            <select id="paymentMethod" onchange="togglePaymentInfo()" required class="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:ring-2 focus:ring-amber-500 outline-none font-semibold">
+                                <option value="" disabled selected>-- Pilih Metode --</option>
+                                <option value="Tunai">Tunai (Via Admin Kelas)</option>
+                                <option value="QRIS">QRIS</option>
+                                <option value="Transfer">Transfer Bank</option>
+                            </select>
+                        </div>
+
+                        <div id="paymentInfoContainer" class="hidden p-4 bg-slate-800 rounded border border-slate-600 text-center shadow-inner">
+                            <p id="paymentTitle" class="text-amber-400 font-bold mb-2 text-sm uppercase tracking-wide"></p>
+                            <img id="qrisImage" src="" class="mx-auto max-w-[200px] border bg-white hidden mb-2 rounded shadow">
+                            <p id="bankText" class="text-xl font-bold tracking-wider text-white hidden my-3"></p>
+                            
+                            <div id="uploadBuktiContainer" class="mt-3 pt-3 border-t border-slate-700 text-left">
+                                <label class="block text-xs text-amber-300 font-bold mb-1">Unggah Bukti Transfer / QRIS (Wajib jika non-tunai)</label>
+                                <input type="file" id="buktiFile" accept="image/png, image/jpeg, image/jpg" onchange="compressImage(this)" class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-amber-600 file:text-white hover:file:bg-amber-500 cursor-pointer">
+                                <input type="hidden" id="buktiBase64">
+                            </div>
+
+                            <div class="bg-red-900/30 border border-red-500/50 p-2 rounded mt-3">
+                                <p class="text-red-400 text-xs font-bold flex items-center justify-center gap-1"><span>⚠️</span> Peringatan Booking</p>
+                                <p class="text-[10px] text-red-300 leading-tight mt-1">Harap bayar sebelum 24 jam. Jika melewati batas, kursi otomatis hangus.</p>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="btnSubmit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-black py-4 rounded-lg shadow-lg mt-6 transition text-lg">
+                            PESAN TIKET
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: CEK E-TIKET -->
+        <div id="cek-tiketView" class="view-section hidden max-w-md mx-auto animate-fade mt-6">
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 text-center shadow-2xl">
+                <h2 class="text-2xl font-bold mb-2">Validasi & Download Tiket</h2>
+                <p class="text-sm text-slate-400 mb-6">Cek status pembayaran tiket Anda di sini.</p>
+                
+                <div class="relative">
+                    <input type="text" id="searchOrderId" placeholder="Masukkan Order ID (Cth: ORD-9A-12345)" class="w-full bg-slate-900 border border-slate-600 p-4 rounded-lg mb-2 text-center font-mono text-lg uppercase text-white shadow-inner focus:ring-2 focus:ring-blue-500 outline-none">
+                    <p class="text-[11px] text-amber-400 mb-4 font-semibold">⚠️ Mohon catat/simpan Nomor Order (Order ID) Anda agar tidak lupa saat pengecekan tiket.</p>
+                </div>
+                <button onclick="checkTicket()" class="w-full bg-blue-600 py-3 rounded-lg font-bold hover:bg-blue-500 transition shadow-lg text-white">CEK DATABASE</button>
+                
+                <div id="ticketResult" class="hidden mt-8 transition-all">
+                    <div id="paymentTimerBox" class="mb-4 p-3 bg-amber-900/40 border border-amber-500 rounded-lg text-center hidden">
+                        <p class="text-xs text-amber-300 font-bold">⏱️ Sisa Waktu Pembayaran:</p>
+                        <p id="countdownTimer" class="text-lg font-mono font-black text-amber-400">23:59:59</p>
+                    </div>
+
+                    <div id="ticketCard" class="bg-white text-slate-900 rounded-xl relative overflow-hidden text-left shadow-[0_0_20px_rgba(0,0,0,0.5)] mx-auto max-w-sm border-2 border-slate-200 flex flex-col aspect-[1/1.414]">
+                        <div class="absolute inset-0 z-0">
+                            <img id="tPosterBg" src="" class="w-full h-full object-cover opacity-15" crossorigin="anonymous">
+                            <div class="absolute inset-0 bg-gradient-to-t from-white via-white/90 to-white/70"></div>
+                        </div>
+
+                        <div class="absolute -left-4 top-1/3 w-8 h-8 bg-slate-800 rounded-full z-20"></div>
+                        <div class="absolute -right-4 top-1/3 w-8 h-8 bg-slate-800 rounded-full z-20"></div>
+                        
+                        <div class="bg-slate-900 text-white p-3 flex justify-between items-center relative z-10 border-b-4 border-amber-500">
+                            <img src="WhatsApp Image 2024-06-10 at 12.01.05.jpeg" class="w-9 h-9 object-contain rounded-full bg-white p-0.5" alt="SMPN 3">
+                            <div class="text-center">
+                                <h3 class="font-black text-lg text-amber-400 leading-none mb-1">FESTABA 2027</h3>
+                                <p class="text-[8px] text-slate-300 uppercase tracking-widest">Satu Panggung Satu Cerita</p>
+                            </div>
+                            <img src="logo Semur fix.png" class="w-9 h-9 object-contain rounded-full bg-white p-0.5" alt="Semut Merah">
+                        </div>
+                        
+                        <div class="p-4 relative z-10 flex-grow flex flex-col justify-between">
+                            <div class="text-center mb-2 bg-white/80 backdrop-blur py-2 rounded border border-slate-200 shadow-sm">
+                                <svg id="barcode" class="mx-auto w-full max-h-16"></svg>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-y-2 gap-x-2 text-xs bg-white/90 backdrop-blur p-3 rounded-lg border border-slate-200 shadow-sm relative">
+                                <div class="col-span-2 border-b border-dashed border-slate-300 pb-2 mb-1 flex justify-between items-end">
+                                    <div>
+                                        <p class="text-[9px] text-slate-500 uppercase font-bold">Status Pembayaran</p>
+                                        <p id="tStatus" class="font-black text-sm">-</p>
+                                    </div>
+                                    <img src="FESTABA.jpeg" class="w-10 h-10 opacity-80 rounded-full">
+                                </div>
+
+                                <div>
+                                    <p class="text-[9px] text-slate-500 uppercase font-bold">ID Transaksi</p>
+                                    <p id="tOrderId" class="font-mono font-bold text-slate-800 text-[11px]">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] text-slate-500 uppercase font-bold">Teater Kelas</p>
+                                    <p id="tKelas" class="font-black text-sm text-slate-800">-</p>
+                                </div>
+                                
+                                <div class="col-span-2 mt-1">
+                                    <p class="text-[9px] text-slate-500 uppercase font-bold">Atas Nama Pemesan</p>
+                                    <p id="tNama" class="font-bold text-slate-800 text-sm truncate">-</p>
+                                </div>
+                                
+                                <div class="col-span-2 bg-amber-50 rounded p-2 border border-amber-200 mt-1">
+                                    <p class="text-[9px] text-amber-600 uppercase font-bold mb-0.5">Nomor Kursi (Tersimpan)</p>
+                                    <p id="tKursi" class="font-black text-base text-amber-700 break-words leading-tight">-</p>
+                                </div>
+                            </div>
+                            <div class="text-center text-[9px] text-slate-600 mt-2 font-medium">Tunjukkan barcode ini saat memasuki gedung pertunjukan.</div>
+                        </div>
+                    </div>
+                    
+                    <button onclick="downloadTicket()" id="btnDownload" class="mt-6 w-full bg-emerald-600 py-4 rounded-lg font-bold text-white hover:bg-emerald-500 transition shadow-[0_0_15px_rgba(16,185,129,0.4)] flex justify-center items-center gap-2">
+                        DOWNLOAD E-TIKET (.JPG)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: ADMIN -->
+        <div id="adminView" class="view-section hidden animate-fade max-w-5xl mx-auto mt-6">
+            <div id="adminLoginBox" class="max-w-md mx-auto bg-slate-800 p-8 rounded-xl border border-slate-700 shadow-2xl">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-bold text-red-400">Portal Admin Kelas</h2>
+                    <p class="text-sm text-slate-400">Silakan login untuk memverifikasi tiket dan mengatur konfigurasi.</p>
+                </div>
+                <form onsubmit="loginAdmin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-sm mb-1">Pilih Kelas</label>
+                        <select id="adminKelas" required class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white outline-none focus:ring-1 focus:ring-red-400"></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Password Kelas</label>
+                        <input type="password" id="adminPassword" required class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white outline-none focus:ring-1 focus:ring-red-400">
+                    </div>
+                    <button type="submit" id="btnLogin" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded mt-4 transition">
+                        MASUK PANEL ADMIN
+                    </button>
+                </form>
+            </div>
+
+            <!-- Admin Dashboard -->
+            <div id="adminDashboard" class="hidden bg-slate-800 p-4 md:p-6 rounded-xl border border-slate-700 shadow-2xl space-y-6">
+                <div class="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-slate-600">
+                    <div class="text-center md:text-left">
+                        <h2 class="text-2xl font-bold text-amber-400">Admin Kelas: <span id="lblAdminKelas" class="text-white"></span></h2>
+                        <p class="text-xs text-slate-400 mt-1">Sistem Manajemen Teater FESTABA</p>
+                    </div>
+                    <div class="flex gap-2 mt-4 md:mt-0">
+                        <button onclick="exportExcel()" class="bg-emerald-600 hover:bg-emerald-500 px-3 py-2 rounded text-xs font-bold shadow flex items-center gap-1">📥 DOWNLOAD EXCEL</button>
+                        <button onclick="logoutAdmin()" class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded text-xs font-bold shadow">KELUAR</button>
+                    </div>
+                </div>
+
+                <!-- Pengaturan & Upload Poster A4 Portrait -->
+                <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+                    <h3 class="text-sm font-bold text-amber-400 mb-3 uppercase tracking-wide">⚙️ Pengaturan Pementasan & Link Poster A4 Portrait</h3>
+                    <form onsubmit="updateConfigAdmin(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                        <div>
+                            <label class="block text-slate-300 mb-1">Judul Naskah Teater</label>
+                            <input type="text" id="cfgJudul" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white outline-none" required>
+                        </div>
+                        <div>
+                            <label class="block text-slate-300 mb-1">Sutradara</label>
+                            <input type="text" id="cfgSutradara" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white outline-none" required>
+                        </div>
+                        <div>
+                            <label class="block text-slate-300 mb-1">Penulis Naskah</label>
+                            <input type="text" id="cfgPenulis" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white outline-none" required>
+                        </div>
+                        <div>
+                            <label class="block text-slate-300 mb-1">Link URL Poster (Google Drive / Gambar)</label>
+                            <input type="text" id="cfgPoster" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white outline-none" placeholder="Paste Link Google Drive Poster">
+                        </div>
+                        <div>
+                            <label class="block text-slate-300 mb-1">Tanggal Pentas</label>
+                            <input type="text" id="cfgTanggal" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white outline-none" placeholder="Cth: 14 Nov 2027">
+                        </div>
+                        <div>
+                            <label class="block text-slate-300 mb-1">Waktu Pentas</label>
+                            <input type="text" id="cfgWaktu" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white outline-none" placeholder="Cth: 19:30 WITA">
+                        </div>
+                        <div>
+                            <label class="block text-slate-300 mb-1">Info Rekening Pembayaran</label>
+                            <input type="text" id="cfgRekening" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white outline-none" placeholder="No Rekening Bank">
+                        </div>
+                        <div>
+                            <label class="block text-slate-300 mb-1">Link QRIS Google Drive</label>
+                            <input type="text" id="cfgQris" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white outline-none" placeholder="Link QRIS">
+                        </div>
+                        <div class="col-span-2">
+                            <button type="submit" class="bg-amber-600 hover:bg-amber-500 font-bold text-slate-900 w-full py-2.5 rounded transition">SIMPAN PENGATURAN KELAS</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="flex flex-wrap gap-2 justify-between items-center bg-slate-900 p-3 rounded border border-slate-700">
+                    <div class="flex gap-2">
+                        <button onclick="adminActionBulk('verify')" class="bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded text-xs font-bold shadow">✓ VERIFIKASI (LUNAS)</button>
+                        <button onclick="adminActionBulk('delete')" class="bg-red-600 hover:bg-red-500 px-3 py-2 rounded text-xs font-bold shadow">🗑️ HAPUS KURSI</button>
+                    </div>
+                    <button onclick="loadAdminData()" id="btnRefresh" class="bg-slate-600 hover:bg-slate-500 px-3 py-2 rounded text-xs font-bold shadow">🔄 REFRESH</button>
+                </div>
+
+                <div class="overflow-x-auto rounded border border-slate-700 bg-slate-900 shadow-inner">
+                    <table class="w-full text-left whitespace-nowrap">
+                        <thead class="text-[10px] uppercase bg-slate-800 text-slate-300 tracking-wider">
+                            <tr>
+                                <th class="p-3 w-10 text-center"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" class="w-4 h-4 cursor-pointer"></th>
+                                <th class="p-3">Waktu Transaksi</th>
+                                <th class="p-3">Order ID / Pemesan</th>
+                                <th class="p-3">Detail Kursi</th>
+                                <th class="p-3">Bukti Bayar & Metode</th>
+                                <th class="p-3">Aksi WhatsApp Bot</th>
+                                <th class="p-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminTableBody" class="text-slate-200 text-xs divide-y divide-slate-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL POPUP PREVIEW FOTO BUKTI PEMBAYARAN -->
+    <div id="fotoModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center;">
+        <div style="position:relative; max-width:90%; max-height:90%; text-align:center;">
+            <img id="modalImg" src="" style="max-width:100%; max-height:85vh; border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.5);">
+            <button onclick="document.getElementById('fotoModal').style.display='none'" style="position:absolute; top:-15px; right:-15px; background:#ef4444; color:white; border:none; border-radius:50%; width:35px; height:35px; font-weight:bold; font-size:16px; cursor:pointer;">&times;</button>
+        </div>
+    </div>
+
+    <script>
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbyTvb1Qp-E5lNWECsUW-utPnBwiaGaBuHwmqxt8DjV6UZnZ4esZunOs8YZBNcYK5-yS/exec';
+        
+        let configData = [];
+        let bookedSeats = [];
+        let currentClassConfig = null;
+        let selectedSeats = [];
+        let isAudioPlaying = false;
+        let currentAdminClass = '';
+        let adminDataList = [];
+        let countdownInterval = null;
+        
+        const PRICES = { 'VIP': 30000, 'REG': 20000, 'UMUM': 10000 };
+        const classNames = ['9A', '9B', '9C', '9D', '9E', '9F', '9G', '9H', '9I', '9J', '9K'];
+
+        function fixDriveUrl(url) {
+            if(!url) return '';
+            if(url.includes('drive.google.com')) {
+                let match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+                if(match && match[1]) {
+                    return `https://lh3.googleusercontent.com/d/${match[1]}`;
+                }
+            }
+            return url;
+        }
+
+        function setSession(view) {
+            sessionStorage.setItem('festaba_view', view);
+            if(view === 'admin' && currentAdminClass) sessionStorage.setItem('festaba_admin', currentAdminClass);
+            if(view === 'booking' && currentClassConfig) sessionStorage.setItem('festaba_booking_class', currentClassConfig.kelas);
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const days = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+            const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+            document.getElementById('realtimeDate').innerText = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+            document.getElementById('realtimeClock').innerText = now.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function startApp() {
+            sessionStorage.setItem('festaba_started', 'true');
+            document.getElementById('introOverlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('introOverlay').style.display = 'none';
+                tryPlayAudio();
+            }, 700);
+            initApp();
+        }
+
+        function tryPlayAudio() {
+            const audio = document.getElementById('jingleAudio');
+            const btn = document.getElementById('btnAudio');
+            audio.play().then(() => {
+                isAudioPlaying = true;
+                btn.innerText = '🔊';
+                btn.classList.replace('bg-red-900', 'bg-emerald-600');
+            }).catch(e => {
+                isAudioPlaying = false;
+                btn.innerText = '🔇';
+                btn.classList.replace('bg-emerald-600', 'bg-red-900');
+            });
+        }
+
+        function toggleAudio() {
+            const audio = document.getElementById('jingleAudio');
+            const btn = document.getElementById('btnAudio');
+            if (isAudioPlaying) {
+                audio.pause(); btn.innerText = '🔇';
+                btn.classList.replace('bg-emerald-600', 'bg-red-900');
+            } else {
+                audio.play(); btn.innerText = '🔊';
+                btn.classList.replace('bg-red-900', 'bg-emerald-600');
+            }
+            isAudioPlaying = !isAudioPlaying;
+        }
+
+        function switchView(viewName) {
+            ['home', 'cek-tiket', 'admin'].forEach(id => {
+                let el = document.getElementById('nav-' + id);
+                if(el) el.classList.remove('text-amber-400', 'border-b-2', 'border-amber-400');
+            });
+            let actEl = document.getElementById('nav-' + viewName);
+            if(actEl && viewName !== 'admin') actEl.classList.add('text-amber-400', 'border-b-2', 'border-amber-400');
+
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            
+            let targetView = viewName === 'cek-tiket' ? 'cek-tiketView' : (viewName + 'View');
+            let targetEl = document.getElementById(targetView);
+            if(targetEl) {
+                targetEl.classList.remove('hidden');
+            }
+            
+            if(viewName === 'admin' && configData.length > 0) populateAdminDropdown();
+            setSession(viewName);
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        async function initApp() {
+            Swal.fire({title: 'Memuat Panggung...', text: 'Mengambil data dari server', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            
+            try {
+                const response = await fetch(`${GAS_URL}?action=getKonfig`);
+                const result = await response.json();
+                if(result.status === 'success') {
+                    configData = result.data.map(c => ({
+                        ...c,
+                        poster: fixDriveUrl(c.poster),
+                        qris: fixDriveUrl(c.qris)
+                    }));
+                } else { throw new Error('Data format error'); }
+            } catch(e) {
+                configData = classNames.map(cls => ({
+                    kelas: cls, judul: 'Naskah ' + cls, sutradara: 'Siswa', penulis: 'Siswa',
+                    poster: 'https://via.placeholder.com/420x594/1e293b/fbbf24?text=Poster+Kelas+'+cls,
+                    tanggal: '14 Nov 2027', waktu: '19:30', rekening: 'BCA 123456', qris: ''
+                }));
+            }
+            
+            renderHomeGrid();
+            
+            const lastView = sessionStorage.getItem('festaba_view') || 'home';
+            const adminClass = sessionStorage.getItem('festaba_admin');
+            const bookClass = sessionStorage.getItem('festaba_booking_class');
+            
+            if(lastView === 'admin' && adminClass) {
+                currentAdminClass = adminClass;
+                document.getElementById('adminLoginBox').classList.add('hidden');
+                document.getElementById('adminDashboard').classList.remove('hidden');
+                document.getElementById('lblAdminKelas').innerText = adminClass;
+                fillAdminConfigForm();
+                loadAdminData();
+                switchView('admin');
+            } else if (lastView === 'booking' && bookClass) {
+                openBooking(bookClass, false);
+            } else {
+                switchView(lastView);
+            }
+            Swal.close();
+        }
+
+        window.onload = function() {
+            if(sessionStorage.getItem('festaba_started') === 'true') {
+                document.getElementById('introOverlay').style.display = 'none';
+                initApp();
+            }
+        };
+
+        function renderHomeGrid() {
+            const grid = document.getElementById('classGrid');
+            grid.innerHTML = configData.map(c => `
+                <div class="bg-slate-800 rounded-xl overflow-hidden shadow-xl border border-slate-700 hover:border-amber-500 transition group cursor-pointer flex flex-col hover:shadow-[0_0_20px_rgba(245,158,11,0.2)]" onclick="openBooking('${c.kelas}')">
+                    <div class="w-full relative aspect-[1/1.414] bg-slate-900">
+                        <img src="${c.poster || 'https://via.placeholder.com/420x594/1e293b/fbbf24?text=FESTABA+2027'}" class="absolute top-0 left-0 w-full h-full object-cover group-hover:scale-105 transition duration-700" onerror="this.src='https://via.placeholder.com/420x594/1e293b/fbbf24?text=Poster+Error'">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent"></div>
+                    </div>
+                    <div class="p-4 flex-grow flex flex-col justify-end bg-slate-900 border-t border-slate-700 relative -mt-6 z-10 rounded-t-2xl">
+                        <span class="bg-amber-600 text-[10px] font-black px-2 py-1 rounded tracking-widest text-slate-900 w-fit mb-2">KELAS ${c.kelas}</span>
+                        <h3 class="text-xl font-bold text-white mb-2 leading-tight line-clamp-2">${c.judul}</h3>
+                        <div class="bg-slate-800 p-2 rounded border border-slate-700 text-xs text-slate-400 mt-auto">
+                            <p class="mb-1 text-amber-300 font-semibold">🕒 ${c.tanggal || 'TBA'} - ${c.waktu || 'TBA'}</p>
+                            <p>Sutradara: ${c.sutradara}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function openBooking(kelas, setSess = true) {
+            currentClassConfig = configData.find(c => c.kelas === kelas);
+            if(!currentClassConfig) { switchView('home'); return; }
+            
+            selectedSeats = [];
+            updateSelectedUI();
+            document.getElementById('orderForm').reset();
+            document.getElementById('buktiBase64').value = '';
+            togglePaymentInfo();
+
+            document.getElementById('bookingHeader').innerHTML = `
+                <span class="bg-amber-500 text-slate-900 text-xs font-black px-3 py-1 rounded-full mb-3 inline-block tracking-widest">JADWAL KELAS ${currentClassConfig.kelas}</span>
+                <h2 class="text-3xl font-black text-white leading-tight">"${currentClassConfig.judul}"</h2>
+                <div class="flex flex-wrap justify-center gap-4 mt-3 text-xs text-slate-400">
+                    <p class="bg-slate-900 px-3 py-1 rounded border border-slate-700">Sutradara: <span class="text-white">${currentClassConfig.sutradara}</span></p>
+                    <p class="bg-slate-900 px-3 py-1 rounded border border-slate-700">Penulis: <span class="text-white">${currentClassConfig.penulis}</span></p>
+                </div>
+                <p class="text-sm text-amber-400 mt-4 font-bold tracking-wide">PENTAS: ${currentClassConfig.tanggal} | PUKUL ${currentClassConfig.waktu}</p>
+            `;
+            
+            switchView('booking');
+            if(setSess) setSession('booking');
+            
+            document.getElementById('seatMap').innerHTML = '<div class="text-center py-10"><span class="animate-spin inline-block w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full"></span><p class="mt-2 text-slate-400 text-sm">Mensinkronkan kursi...</p></div>';
+            
+            try {
+                const response = await fetch(`${GAS_URL}?action=getKursiTerpakai&kelas=${kelas}`);
+                const result = await response.json();
+                bookedSeats = result.data || [];
+            } catch(e) { bookedSeats = []; }
+            
+            renderSeats('VIP'); 
+        }
+
+        function renderSeats(type) {
+            ['VIP', 'REG', 'UMUM'].forEach(t => {
+                let el = document.getElementById('tab-' + t);
+                if(el) {
+                    if(t === type) {
+                        el.classList.replace('bg-slate-700', t==='VIP'?'bg-amber-600':(t==='REG'?'bg-blue-600':'bg-emerald-600'));
+                        el.classList.add('text-white', 'shadow-lg');
+                    } else {
+                        el.className = 'flex-1 bg-slate-700 py-3 rounded font-bold text-sm shadow border border-slate-600 transition text-slate-400 hover:bg-slate-600';
+                    }
+                }
+            });
+
+            const map = document.getElementById('seatMap');
+            let totalSeats = type === 'VIP' ? 60 : (type === 'REG' ? 140 : 100);
+            let totalRows = totalSeats / 20; 
+            
+            let html = '';
+            for (let row = 0; row < totalRows; row++) {
+                html += `<div class="flex justify-between mb-2">`;
+                html += `<div class="grid grid-cols-10 gap-1 w-[48%]">`;
+                for (let i = 1; i <= 10; i++) {
+                    html += createSeatButton(type, (row * 20) + i);
+                }
+                html += `</div>`;
+                html += `<div class="w-[4%] flex items-center justify-center"><div class="w-px h-full bg-slate-800"></div></div>`;
+                html += `<div class="grid grid-cols-10 gap-1 w-[48%]">`;
+                for (let i = 11; i <= 20; i++) {
+                    html += createSeatButton(type, (row * 20) + i);
+                }
+                html += `</div></div>`;
+            }
+            map.innerHTML = html;
+        }
+
+        function createSeatButton(type, num) {
+            let seatId = `${currentClassConfig.kelas}-${type}-${num.toString().padStart(3, '0')}`;
+            let isBooked = bookedSeats.includes(seatId);
+            let isSelected = selectedSeats.includes(seatId);
+            let bgClass = isBooked ? 'bg-red-500/80 text-white border-red-700' : (isSelected ? 'seat-selected border-emerald-500' : 'bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600 hover:text-white');
+            return `<button type="button" onclick="toggleSeat('${seatId}')" id="btn-${seatId}" class="seat-btn border ${bgClass}" ${isBooked ? 'disabled title="Sudah dipesan"' : ''}>${num}</button>`;
+        }
+
+        function toggleSeat(seatId) {
+            const idx = selectedSeats.indexOf(seatId);
+            const btn = document.getElementById(`btn-${seatId}`);
+            if(idx > -1) {
+                selectedSeats.splice(idx, 1);
+                btn.classList.remove('seat-selected', 'border-emerald-500');
+                btn.classList.add('bg-slate-700', 'text-slate-300', 'border-slate-600');
+            } else {
+                selectedSeats.push(seatId);
+                btn.classList.remove('bg-slate-700', 'text-slate-300', 'border-slate-600');
+                btn.classList.add('seat-selected', 'border-emerald-500');
+            }
+            updateSelectedUI();
+        }
+
+        function updateSelectedUI() {
+            const label = document.getElementById('selectedSeatLabel');
+            const priceLabel = document.getElementById('totalPriceLabel');
+            if(selectedSeats.length === 0) {
+                label.innerHTML = '-';
+                priceLabel.innerText = 'Rp 0';
+                return;
+            }
+            label.innerHTML = selectedSeats.map(s => {
+                let parts = s.split('-'); 
+                let jenis = parts[1];
+                let colorClass = jenis === 'VIP' ? 'bg-amber-600' : (jenis === 'REG' ? 'bg-blue-600' : 'bg-emerald-600');
+                return `<span class="inline-block ${colorClass} text-white px-2 py-1 m-0.5 rounded text-[10px] font-bold">${parts[1]}-${parts[2]}</span>`;
+            }).join('');
+            
+            let total = 0;
+            selectedSeats.forEach(s => { total += PRICES[s.split('-')[1]] || 0; });
+            priceLabel.innerText = 'Rp ' + total.toLocaleString('id-ID');
+        }
+
+        function togglePaymentInfo() {
+            const method = document.getElementById('paymentMethod').value;
+            const container = document.getElementById('paymentInfoContainer');
+            const title = document.getElementById('paymentTitle');
+            const img = document.getElementById('qrisImage');
+            const bank = document.getElementById('bankText');
+
+            if(!method) { container.classList.add('hidden'); return; }
+            container.classList.remove('hidden');
+            img.classList.add('hidden');
+            bank.classList.add('hidden');
+
+            if(method === 'Tunai') {
+                title.innerText = "Instruksi Bayar Tunai";
+                bank.classList.remove('hidden');
+                bank.innerHTML = `<span class='text-sm font-normal text-slate-300'>Segera temui Panitia / Admin Tiket</span><br><span class="text-amber-400">KELAS ${currentClassConfig.kelas}</span>`;
+            } else if (method === 'Transfer') {
+                title.innerText = "Transfer ke Rekening:";
+                bank.classList.remove('hidden');
+                bank.innerText = currentClassConfig.rekening;
+            } else if (method === 'QRIS') {
+                title.innerText = "Scan QRIS Berikut:";
+                if(currentClassConfig.qris && currentClassConfig.qris !== '') {
+                    img.classList.remove('hidden');
+                    img.src = currentClassConfig.qris;
+                } else {
+                    bank.classList.remove('hidden');
+                    bank.innerHTML = "<span class='text-sm text-red-400'>QRIS belum diset oleh admin kelas.</span>";
+                }
+            }
+        }
+
+        function compressImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.onload = function () {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        const maxDim = 800;
+                        
+                        if (width > height && width > maxDim) {
+                            height *= maxDim / width;
+                            width = maxDim;
+                        } else if (height > maxDim) {
+                            width *= maxDim / height;
+                            height = maxDim;
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                        document.getElementById('buktiBase64').value = compressedDataUrl;
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        async function submitOrder(e) {
+            e.preventDefault();
+            if(selectedSeats.length === 0) return Swal.fire('Pilih Kursi', 'Silakan klik kursi yang tersedia.', 'warning');
+            
+            const btn = document.getElementById('btnSubmit');
+            btn.innerHTML = `MEMPROSES...`;
+            btn.disabled = true;
+
+            const orderId = `ORD-${currentClassConfig.kelas}-${Math.floor(Math.random()*90000)+10000}`;
+            const payload = {
+                action: 'pesan', 
+                orderId: orderId, 
+                kelasTampil: currentClassConfig.kelas,
+                kursi: selectedSeats, 
+                nama: document.getElementById('buyerName').value,
+                wa: document.getElementById('buyerWA').value, 
+                metode: document.getElementById('paymentMethod').value,
+                bukti: document.getElementById('buktiBase64').value || ''
+            };
+
+            try {
+                const res = await fetch(GAS_URL, { 
+                    method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'},
+                    body: JSON.stringify(payload) 
+                });
+                const data = await res.json();
+                
+                if(data.status === 'success') {
+                    Swal.fire({
+                        title: 'Terima Kasih Sudah Mengapresiasi Pertunjukan Kami!',
+                        html: `Harap simpan Nomor Order ID Anda!<br><b class="text-2xl text-emerald-600 font-mono my-3 block bg-emerald-50 p-2 border rounded">${orderId}</b>`,
+                        icon: 'success', confirmButtonText: 'Cek E-Tiket Saya', allowOutsideClick: false
+                    }).then(() => {
+                        document.getElementById('searchOrderId').value = orderId;
+                        switchView('cek-tiket');
+                        checkTicket();
+                    });
+                } else {
+                    Swal.fire('Gagal Booking', data.message, 'error');
+                    openBooking(currentClassConfig.kelas, false);
+                }
+            } catch (err) {
+                Swal.fire('Error Network', 'Terjadi kesalahan komunikasi dengan server.', 'error');
+            }
+            btn.disabled = false;
+            btn.innerText = "PESAN TIKET";
+        }
+
+        async function checkTicket() {
+            const id = document.getElementById('searchOrderId').value.trim().toUpperCase();
+            if(!id) return Swal.fire('Data Kosong', 'Ketik Order ID Anda.', 'warning');
+            
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `MENCARI...`;
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch(`${GAS_URL}?action=cekTiket&orderId=${id}`);
+                const result = await res.json();
+                
+                if(result.status === 'success') {
+                    const dt = result.data;
+                    document.getElementById('ticketResult').classList.remove('hidden');
+                    document.getElementById('tOrderId').innerText = dt.orderId;
+                    document.getElementById('tNama').innerText = dt.nama;
+                    document.getElementById('tKelas').innerText = `KELAS ${dt.kelas}`;
+                    document.getElementById('tKursi').innerText = dt.kursi.split(', ').map(k => k.split('-').slice(1).join('-')).join(', ');
+                    
+                    const targetCfg = configData.find(c => c.kelas === dt.kelas);
+                    if(targetCfg && targetCfg.poster) {
+                        document.getElementById('tPosterBg').src = targetCfg.poster;
+                    }
+
+                    const st = document.getElementById('tStatus');
+                    const btnDl = document.getElementById('btnDownload');
+                    const barcode = document.getElementById('barcode');
+                    const timerBox = document.getElementById('paymentTimerBox');
+                    barcode.innerHTML = '';
+                    
+                    if(dt.status === 'Verified') {
+                        st.innerText = 'LUNAS (VERIFIED)';
+                        st.className = 'font-black text-sm text-emerald-600';
+                        btnDl.classList.remove('hidden');
+                        timerBox.classList.add('hidden');
+                        if(countdownInterval) clearInterval(countdownInterval);
+                        JsBarcode("#barcode", dt.orderId, { format: "CODE128", displayValue: false, height: 50, background: "transparent", lineColor: "#0f172a", margin: 0 });
+                    } else {
+                        st.innerText = 'MENUNGGU PEMBAYARAN';
+                        st.className = 'font-black text-sm text-red-600 animate-pulse';
+                        btnDl.classList.add('hidden');
+                        timerBox.classList.remove('hidden');
+                        startCountdown(dt.timestamp || new Date().getTime());
+                        barcode.innerHTML = `<rect width="100%" height="50" fill="#f87171" opacity="0.1"/><text y="25" x="50%" dominant-baseline="middle" text-anchor="middle" class="text-sm font-black fill-red-600 font-sans tracking-widest">BELUM LUNAS</text>`;
+                    }
+                    document.getElementById('ticketResult').scrollIntoView({behavior: "smooth", block: "start"});
+                } else {
+                    Swal.fire('Tiket Tidak Ditemukan', 'Pastikan Order ID benar atau belum expired.', 'error');
+                    document.getElementById('ticketResult').classList.add('hidden');
+                }
+            } catch(e) {
+                Swal.fire('Error', 'Gagal membaca database.', 'error');
+            }
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+
+        function startCountdown(orderTime) {
+            if(countdownInterval) clearInterval(countdownInterval);
+            let targetTime = new Date(orderTime).getTime() + (24 * 60 * 60 * 1000);
+            
+            countdownInterval = setInterval(() => {
+                let now = new Date().getTime();
+                let distance = targetTime - now;
+                
+                if (distance < 0) {
+                    clearInterval(countdownInterval);
+                    document.getElementById('countdownTimer').innerText = "WAKTU HABIS (EXPIRED)";
+                    return;
+                }
+                
+                let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                
+                document.getElementById('countdownTimer').innerText = 
+                    String(hours).padStart(2, '0') + ":" + 
+                    String(minutes).padStart(2, '0') + ":" + 
+                    String(seconds).padStart(2, '0');
+            }, 1000);
+        }
+
+        function downloadTicket() {
+            const card = document.getElementById('ticketCard');
+            const btn = document.getElementById('btnDownload');
+            const orderId = document.getElementById('tOrderId').innerText;
+            btn.innerHTML = `MEMPROSES...`;
+            btn.disabled = true;
+            
+            html2canvas(card, { scale: 3, useCORS: true, backgroundColor: '#ffffff', logging: false }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Tiket_FESTABA_${orderId}.jpg`;
+                link.href = canvas.toDataURL('image/jpeg', 0.9);
+                link.click();
+                btn.innerHTML = `DOWNLOAD E-TIKET (.JPG)`;
+                btn.disabled = false;
+                Swal.fire('Berhasil Download!', 'Tiket tersimpan di perangkat Anda.', 'success', 3000);
+            }).catch(err => {
+                Swal.fire('Gagal Render', 'Silakan screenshot manual.', 'error');
+                btn.innerHTML = `DOWNLOAD E-TIKET (.JPG)`;
+                btn.disabled = false;
+            });
+        }
+
+        function populateAdminDropdown() {
+            const sel = document.getElementById('adminKelas');
+            sel.innerHTML = '<option value="">-- Pilih Kelas Anda --</option>' + classNames.map(c => `<option value="${c}">${c}</option>`).join('');
+            if(currentAdminClass) sel.value = currentAdminClass;
+        }
+
+        async function loginAdmin(e) {
+            e.preventDefault();
+            const kls = document.getElementById('adminKelas').value;
+            const pwd = document.getElementById('adminPassword').value;
+            const btn = document.getElementById('btnLogin');
+            btn.innerHTML = `MENGOTENTIKASI...`;
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'text/plain;charset=utf-8'},
+                    body: JSON.stringify({action: 'adminLogin', kelas: kls, password: pwd})
+                });
+                const data = await res.json();
+                
+                if(data.status === 'success') {
+                    currentAdminClass = kls;
+                    sessionStorage.setItem('festaba_admin', kls);
+                    document.getElementById('adminLoginBox').classList.add('hidden');
+                    document.getElementById('adminDashboard').classList.remove('hidden');
+                    document.getElementById('lblAdminKelas').innerText = kls;
+                    fillAdminConfigForm();
+                    loadAdminData();
+                } else {
+                    Swal.fire('Ditolak', 'Password salah untuk kelas ' + kls, 'error');
+                }
+            } catch(e) {
+                Swal.fire('Error', 'Sistem gagal menghubungi server admin.', 'error');
+            }
+            btn.innerText = "MASUK PANEL ADMIN";
+            btn.disabled = false;
+        }
+
+        function fillAdminConfigForm() {
+            const cfg = configData.find(c => c.kelas === currentAdminClass);
+            if(cfg) {
+                document.getElementById('cfgJudul').value = cfg.judul || '';
+                document.getElementById('cfgSutradara').value = cfg.sutradara || '';
+                document.getElementById('cfgPenulis').value = cfg.penulis || '';
+                document.getElementById('cfgPoster').value = cfg.poster || '';
+                document.getElementById('cfgTanggal').value = cfg.tanggal || '';
+                document.getElementById('cfgWaktu').value = cfg.waktu || '';
+                document.getElementById('cfgRekening').value = cfg.rekening || '';
+                document.getElementById('cfgQris').value = cfg.qris || '';
+            }
+        }
+
+        async function updateConfigAdmin(e) {
+            e.preventDefault();
+            const payload = {
+                action: 'updateConfig',
+                kelas: currentAdminClass,
+                judul: document.getElementById('cfgJudul').value,
+                sutradara: document.getElementById('cfgSutradara').value,
+                penulis: document.getElementById('cfgPenulis').value,
+                poster: document.getElementById('cfgPoster').value,
+                tanggal: document.getElementById('cfgTanggal').value,
+                waktu: document.getElementById('cfgWaktu').value,
+                rekening: document.getElementById('cfgRekening').value,
+                qris: document.getElementById('cfgQris').value
+            };
+
+            Swal.fire({title: 'Menyimpan Konfigurasi...', allowOutsideClick: false, didOpen: ()=>Swal.showLoading()});
+            try {
+                const res = await fetch(GAS_URL, {
+                    method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if(data.status === 'success') {
+                    Swal.fire('Berhasil', 'Konfigurasi pementasan dan poster kelas berhasil diperbarui.', 'success');
+                    initApp();
+                } else { throw new Error(data.message); }
+            } catch(err) {
+                Swal.fire('Error', 'Gagal menyimpan ke server.', 'error');
+            }
+        }
+
+        function logoutAdmin() {
+            currentAdminClass = '';
+            sessionStorage.removeItem('festaba_admin');
+            document.getElementById('adminPassword').value = '';
+            document.getElementById('adminDashboard').classList.add('hidden');
+            document.getElementById('adminLoginBox').classList.remove('hidden');
+        }
+
+        async function loadAdminData() {
+            const tbody = document.getElementById('adminTableBody');
+            const btnRefresh = document.getElementById('btnRefresh');
+            btnRefresh.innerHTML = `...`;
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-amber-500 font-bold">Mengambil data tiket...</td></tr>';
+            
+            try {
+                const res = await fetch(`${GAS_URL}?action=getAdminData&kelas=${currentAdminClass}`);
+                const result = await res.json();
+                if(result.status === 'success') {
+                    adminDataList = result.data;
+                    renderAdminTable();
+                } else { throw new Error(); }
+            } catch(e) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-red-500 font-bold">Gagal memuat data.</td></tr>';
+            }
+            btnRefresh.innerHTML = `🔄 REFRESH`;
+        }
+
+        // Fungsi membuka Modal Preview Foto Ukuran Besar (Aman dari Top-Frame Error)
+        function bukaModalFoto(base64Url) {
+            if (!base64Url) return;
+            const modal = document.getElementById('fotoModal');
+            const modalImg = document.getElementById('modalImg');
+            modalImg.src = base64Url;
+            modal.style.display = 'flex';
+        }
+
+        function renderAdminTable() {
+            const tbody = document.getElementById('adminTableBody');
+            if(adminDataList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-slate-400">Belum ada pesanan masuk untuk kelas ini.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = [...adminDataList].reverse().map((row, i) => {
+                let date = new Date(row[0]);
+                let strDate = `${date.getDate()}/${date.getMonth()+1} ${date.getHours()}:${date.getMinutes()}`;
+                let isVerified = row[8] === 'Verified';
+                let statusColor = isVerified ? 'text-emerald-400 bg-emerald-900/30' : 'text-amber-400 bg-amber-900/30 animate-pulse';
+                let txtStatus = isVerified ? 'LUNAS' : 'MENUNGGU BAYAR';
+                let kursiText = row[4].split('-').slice(1).join('-');
+                let waNumber = row[6].toString().replace(/^0/, '62');
+                let buyerName = row[5];
+                let orderId = row[1];
+                let paymentMethod = row[7];
+                let rawBukti = row[9] || '';
+                let buktiUrl = rawBukti.startsWith('data:image') ? rawBukti : fixDriveUrl(rawBukti);
+                let theaterTitle = currentClassConfig ? currentClassConfig.judul : `Teater Kelas ${currentAdminClass}`;
+
+                let msgReminder = encodeURIComponent(`Halo ${buyerName}, terima kasih telah memesan tiket FESTABA 2027 untuk naskah "${theaterTitle}" (Order ID: ${orderId}). Segera selesaikan pembayaran sebelum batas waktu 24 jam agar kursi Anda tidak kadaluarsa/hangus.`);
+                let msgExpired = encodeURIComponent(`Halo ${buyerName}, mohon maaf pesanan tiket FESTABA Anda dengan Order ID ${orderId} telah kadaluarsa karena melewati batas waktu pembayaran.`);
+
+                let buktiHtml = paymentMethod === 'Tunai' 
+                    ? `<span class="text-xs text-slate-400">Bayar Tunai</span>` 
+                    : (buktiUrl ? `
+                        <div class="flex items-center gap-2">
+                            <img src="${buktiUrl}" class="w-12 h-12 object-cover rounded border border-slate-600 cursor-pointer hover:scale-105 transition" onclick="bukaModalFoto('${buktiUrl}')" alt="Bukti" onerror="this.onerror=null;this.src='https://via.placeholder.com/40?text=IMG'">
+                            <button onclick="bukaModalFoto('${buktiUrl}')" class="text-blue-400 underline text-xs font-bold bg-transparent border-none cursor-pointer">Lihat Foto</button>
+                        </div>` 
+                      : `<span class="text-xs text-red-400">Tidak ada bukti</span>`);
+
+                return `
+                <tr class="hover:bg-slate-700/50 transition">
+                    <td class="p-3 text-center"><input type="checkbox" class="chk-row w-4 h-4 cursor-pointer" value="${orderId}|${row[4]}"></td>
+                    <td class="p-3 text-slate-400">${strDate}</td>
+                    <td class="p-3">
+                        <span class="font-mono text-amber-300">${orderId}</span><br>
+                        <span class="font-bold text-sm text-white">${buyerName}</span><br>
+                        <a href="https://wa.me/${waNumber}" target="_blank" class="text-blue-400 hover:underline">${row[6]}</a>
+                    </td>
+                    <td class="p-3">
+                        <span class="text-xs font-semibold text-slate-300 bg-slate-800 px-2 py-0.5 border border-slate-600 rounded">${row[3]}</span><br>
+                        <span class="text-lg font-black text-amber-500">${kursiText}</span>
+                    </td>
+                    <td class="p-3 text-sm">
+                        <span class="font-bold text-white">${paymentMethod}</span><br>
+                        ${buktiHtml}
+                    </td>
+                    <td class="p-3 space-x-1">
+                        <a href="https://wa.me/${waNumber}?text=${msgReminder}" target="_blank" class="inline-block bg-emerald-700 hover:bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-bold">💬 Kirim Reminder WA</a>
+                        <a href="https://wa.me/${waNumber}?text=${msgExpired}" target="_blank" class="inline-block bg-red-700 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold">⚠️ Info Kadaluarsa</a>
+                    </td>
+                    <td class="p-3">
+                        <span class="px-2 py-1 rounded text-[10px] font-bold tracking-wider border ${isVerified ? 'border-emerald-500/50' : 'border-amber-500/50'} ${statusColor}">${txtStatus}</span>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function toggleSelectAll(source) {
+            document.querySelectorAll('.chk-row').forEach(chk => chk.checked = source.checked);
+        }
+
+        async function adminActionBulk(type) {
+            const checkboxes = document.querySelectorAll('.chk-row:checked');
+            if(checkboxes.length === 0) return Swal.fire('Pilih Data', 'Centang minimal 1 baris tiket.', 'warning');
+            
+            const {isConfirmed} = await Swal.fire({title: 'Konfirmasi Aksi', text: `Proses tiket yang dipilih?`, icon: 'question', showCancelButton: true});
+            if(!isConfirmed) return;
+
+            const targets = Array.from(checkboxes).map(c => {
+                const parts = c.value.split('|');
+                return {orderId: parts[0], kursi: parts[1]};
+            });
+
+            Swal.fire({title: 'Memproses...', allowOutsideClick: false, didOpen: ()=>Swal.showLoading()});
+            try {
+                const res = await fetch(GAS_URL, {
+                    method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'},
+                    body: JSON.stringify({action: 'adminActionBulk', kelas: currentAdminClass, type: type, targets: targets})
+                });
+                const data = await res.json();
+                if(data.status === 'success') {
+                    Swal.fire('Berhasil', 'Data di server telah diupdate.', 'success');
+                    document.getElementById('selectAll').checked = false;
+                    loadAdminData();
+                } else { throw new Error(data.message); }
+            } catch(e) {
+                Swal.fire('Error', 'Gagal memproses koneksi.', 'error');
+            }
+        }
+
+        function exportExcel() {
+            if (!adminDataList || adminDataList.length === 0) return Swal.fire('Data Kosong', 'Tidak ada data untuk kelas ini.', 'warning');
+            
+            let tsv = "Waktu Pesan\tOrder ID\tKelas\tJenis Tiket\tNomor Kursi\tNama Pemesan\tNo WhatsApp\tMetode Pembayaran\tStatus Pembayaran\tLink Bukti Bayar\n";
+            adminDataList.forEach(row => {
+                let cleanRow = row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`);
+                tsv += cleanRow.join("\t") + "\n";
+            });
+            
+            const blob = new Blob([tsv], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Data_Tiket_Kelas_${currentAdminClass}.xls`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
