@@ -133,7 +133,11 @@
                         </div>
                         <div>
                             <label class="block text-sm mb-1 text-slate-300">No WhatsApp (Aktif)</label>
-                            <input type="number" id="buyerWA" required class="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:ring-2 focus:ring-amber-500 outline-none">
+                            <!-- Validasi Input Nomor WA Realtime -->
+                            <input type="number" id="buyerWA" placeholder="Contoh: 6289689..." required 
+                                oninput="if(this.value.length > 0 && !this.value.startsWith('62')) { document.getElementById('waWarning').classList.remove('hidden'); } else { document.getElementById('waWarning').classList.add('hidden'); }" 
+                                class="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:ring-2 focus:ring-amber-500 outline-none">
+                            <p id="waWarning" class="text-xs text-red-500 mt-1 font-bold hidden">⚠️ Format salah! Nomor WA wajib diawali dengan 62</p>
                         </div>
                         <div>
                             <label class="block text-sm mb-1 text-slate-300">Metode Pembayaran</label>
@@ -150,8 +154,8 @@
                             <img id="qrisImage" src="" class="mx-auto max-w-[200px] border bg-white hidden mb-2 rounded shadow">
                             <p id="bankText" class="text-xl font-bold tracking-wider text-white hidden my-3"></p>
                             
-                            <div id="uploadBuktiContainer" class="mt-3 pt-3 border-t border-slate-700 text-left">
-                                <label class="block text-xs text-amber-300 font-bold mb-1">Unggah Bukti Transfer / QRIS (Wajib jika non-tunai)</label>
+                            <div id="uploadBuktiContainer" class="mt-3 pt-3 border-t border-slate-700 text-left hidden">
+                                <label class="block text-xs text-amber-300 font-bold mb-1">Unggah Bukti Transfer / QRIS <span class="text-red-400">(Wajib)</span></label>
                                 <input type="file" id="buktiFile" accept="image/png, image/jpeg, image/jpg" onchange="compressImage(this)" class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-amber-600 file:text-white hover:file:bg-amber-500 cursor-pointer">
                                 <input type="hidden" id="buktiBase64">
                             </div>
@@ -162,7 +166,7 @@
                             </div>
                         </div>
 
-                        <button type="submit" id="btnSubmit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-black py-4 rounded-lg shadow-lg mt-6 transition text-lg">
+                        <button type="submit" id="btnSubmit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-black py-4 rounded-lg shadow-lg mt-6 transition text-lg disabled:opacity-50 disabled:cursor-not-allowed">
                             PESAN TIKET
                         </button>
                     </form>
@@ -327,12 +331,29 @@
                     </form>
                 </div>
 
-                <div class="flex flex-wrap gap-2 justify-between items-center bg-slate-900 p-3 rounded border border-slate-700">
+                <!-- Bagian Kontrol dan Filter Table Admin -->
+                <div class="flex flex-wrap gap-3 justify-between items-center bg-slate-900 p-3 rounded border border-slate-700">
                     <div class="flex gap-2">
                         <button onclick="adminActionBulk('verify')" class="bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded text-xs font-bold shadow">✓ VERIFIKASI (LUNAS)</button>
                         <button onclick="adminActionBulk('delete')" class="bg-red-600 hover:bg-red-500 px-3 py-2 rounded text-xs font-bold shadow">🗑️ HAPUS KURSI</button>
                     </div>
-                    <button onclick="loadAdminData()" id="btnRefresh" class="bg-slate-600 hover:bg-slate-500 px-3 py-2 rounded text-xs font-bold shadow">🔄 REFRESH</button>
+                    
+                    <!-- Fitur Baru: Filter Jenis Tiket & Status Pembayaran -->
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <span class="text-[10px] font-bold text-slate-400 tracking-wider">FILTER:</span>
+                        <select id="filterTicketType" onchange="renderAdminTable()" class="bg-slate-800 border border-slate-600 rounded p-1.5 text-xs text-white outline-none font-semibold focus:ring-1 focus:ring-amber-500 cursor-pointer">
+                            <option value="ALL">🎫 Semua Jenis Tiket</option>
+                            <option value="VIP">🌟 TIKET VIP</option>
+                            <option value="REG">🎟️ TIKET REGULER</option>
+                            <option value="UMUM">🎪 TIKET UMUM</option>
+                        </select>
+                        <select id="filterStatus" onchange="renderAdminTable()" class="bg-slate-800 border border-slate-600 rounded p-1.5 text-xs text-white outline-none font-semibold focus:ring-1 focus:ring-amber-500 cursor-pointer">
+                            <option value="ALL">🔰 Semua Status</option>
+                            <option value="LUNAS">✅ Sudah Lunas</option>
+                            <option value="PENDING">⏳ Belum Bayar</option>
+                        </select>
+                        <button onclick="loadAdminData()" id="btnRefresh" class="bg-slate-600 hover:bg-slate-500 px-3 py-1.5 rounded text-xs font-bold shadow ml-1">🔄 REFRESH</button>
+                    </div>
                 </div>
 
                 <div class="overflow-x-auto rounded border border-slate-700 bg-slate-900 shadow-inner">
@@ -374,6 +395,7 @@
         let currentAdminClass = '';
         let adminDataList = [];
         let countdownInterval = null;
+        let isSubmittingOrder = false; // Mencegah double klik & double data di jaringan (Fitur 3 & 5)
         
         const PRICES = { 'VIP': 30000, 'REG': 20000, 'UMUM': 10000 };
         const classNames = ['9A', '9B', '9C', '9D', '9E', '9F', '9G', '9H', '9I', '9J', '9K'];
@@ -541,6 +563,7 @@
             updateSelectedUI();
             document.getElementById('orderForm').reset();
             document.getElementById('buktiBase64').value = '';
+            document.getElementById('waWarning').classList.add('hidden'); // Sembunyikan warning bawaan form reset
             togglePaymentInfo();
 
             document.getElementById('bookingHeader').innerHTML = `
@@ -651,28 +674,33 @@
             const title = document.getElementById('paymentTitle');
             const img = document.getElementById('qrisImage');
             const bank = document.getElementById('bankText');
+            const uploadCont = document.getElementById('uploadBuktiContainer');
 
             if(!method) { container.classList.add('hidden'); return; }
             container.classList.remove('hidden');
             img.classList.add('hidden');
             bank.classList.add('hidden');
+            uploadCont.classList.add('hidden'); // Sembunyikan default form foto
 
             if(method === 'Tunai') {
                 title.innerText = "Instruksi Bayar Tunai";
                 bank.classList.remove('hidden');
                 bank.innerHTML = `<span class='text-sm font-normal text-slate-300'>Segera temui Panitia / Admin Tiket</span><br><span class="text-amber-400">KELAS ${currentClassConfig.kelas}</span>`;
-            } else if (method === 'Transfer') {
-                title.innerText = "Transfer ke Rekening:";
-                bank.classList.remove('hidden');
-                bank.innerText = currentClassConfig.rekening;
-            } else if (method === 'QRIS') {
-                title.innerText = "Scan QRIS Berikut:";
-                if(currentClassConfig.qris && currentClassConfig.qris !== '') {
-                    img.classList.remove('hidden');
-                    img.src = currentClassConfig.qris;
-                } else {
+            } else if (method === 'Transfer' || method === 'QRIS') {
+                uploadCont.classList.remove('hidden'); // Munculkan fitur upload karena wajib (Fitur 1)
+                if (method === 'Transfer') {
+                    title.innerText = "Transfer ke Rekening:";
                     bank.classList.remove('hidden');
-                    bank.innerHTML = "<span class='text-sm text-red-400'>QRIS belum diset oleh admin kelas.</span>";
+                    bank.innerText = currentClassConfig.rekening;
+                } else {
+                    title.innerText = "Scan QRIS Berikut:";
+                    if(currentClassConfig.qris && currentClassConfig.qris !== '') {
+                        img.classList.remove('hidden');
+                        img.src = currentClassConfig.qris;
+                    } else {
+                        bank.classList.remove('hidden');
+                        bank.innerHTML = "<span class='text-sm text-red-400'>QRIS belum diset oleh admin kelas.</span>";
+                    }
                 }
             }
         }
@@ -712,10 +740,30 @@
 
         async function submitOrder(e) {
             e.preventDefault();
+            
+            // PENCEGAHAN DOUBLE SUBMIT - Jika masih loading/terkunci (Fitur 5)
+            if(isSubmittingOrder) return; 
+
             if(selectedSeats.length === 0) return Swal.fire('Pilih Kursi', 'Silakan klik kursi yang tersedia.', 'warning');
             
+            // VALIDASI NOMOR WA (Fitur 4)
+            const waInput = document.getElementById('buyerWA').value.trim();
+            if (!waInput.startsWith('62')) {
+                document.getElementById('buyerWA').focus();
+                return Swal.fire('Format Nomor Salah', 'Nomor WhatsApp WAJIB diawali dengan kode negara 62 (Contoh: 62896...).', 'error');
+            }
+
+            // VALIDASI WAJIB UPLOAD BUKTI (Fitur 1)
+            const method = document.getElementById('paymentMethod').value;
+            const buktiBase64 = document.getElementById('buktiBase64').value;
+            if ((method === 'QRIS' || method === 'Transfer') && !buktiBase64) {
+                return Swal.fire('Bukti Pembayaran Wajib', 'Mohon unggah foto/screenshot bukti transfer Anda terlebih dahulu.', 'error');
+            }
+            
+            // MENGUNCI TOMBOL DAN SET STATUS SUBMIT (Fitur 3 & 5)
+            isSubmittingOrder = true;
             const btn = document.getElementById('btnSubmit');
-            btn.innerHTML = `MEMPROSES...`;
+            btn.innerHTML = `⏳ MEMPROSES...`;
             btn.disabled = true;
 
             const orderId = `ORD-${currentClassConfig.kelas}-${Math.floor(Math.random()*90000)+10000}`;
@@ -725,9 +773,9 @@
                 kelasTampil: currentClassConfig.kelas,
                 kursi: selectedSeats, 
                 nama: document.getElementById('buyerName').value,
-                wa: document.getElementById('buyerWA').value, 
-                metode: document.getElementById('paymentMethod').value,
-                bukti: document.getElementById('buktiBase64').value || ''
+                wa: waInput, 
+                metode: method,
+                bukti: buktiBase64 || ''
             };
 
             try {
@@ -753,9 +801,14 @@
                 }
             } catch (err) {
                 Swal.fire('Error Network', 'Terjadi kesalahan komunikasi dengan server.', 'error');
-            }
-            btn.disabled = false;
-            btn.innerText = "PESAN TIKET";
+            } 
+            
+            // Melepaskan kuncian tombol dengan delay minimal 1.5 detik (Real time duration fiture / Anti Spam click)
+            setTimeout(() => {
+                isSubmittingOrder = false;
+                btn.disabled = false;
+                btn.innerText = "PESAN TIKET";
+            }, 1500); 
         }
 
         async function checkTicket() {
@@ -985,14 +1038,30 @@
             modal.style.display = 'flex';
         }
 
+        // Peningkatan Fitur 2: Filter Dinamis Data Table Admin
         function renderAdminTable() {
             const tbody = document.getElementById('adminTableBody');
-            if(adminDataList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-slate-400">Belum ada pesanan masuk untuk kelas ini.</td></tr>';
+            const filterType = document.getElementById('filterTicketType') ? document.getElementById('filterTicketType').value : 'ALL';
+            const filterStatus = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : 'ALL';
+
+            // Menyaring data berdasar dropdown filter
+            let filteredData = adminDataList.filter(row => {
+                let jenis = row[3]; 
+                let isVerified = (row[8] === 'Verified');
+                let passType = (filterType === 'ALL' || jenis === filterType);
+                let passStatus = true;
+                if(filterStatus === 'LUNAS') passStatus = isVerified;
+                if(filterStatus === 'PENDING') passStatus = !isVerified;
+
+                return passType && passStatus;
+            });
+
+            if(filteredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-slate-400">Tidak ada tiket yang cocok dengan filter yang dipilih.</td></tr>';
                 return;
             }
             
-            tbody.innerHTML = [...adminDataList].reverse().map((row, i) => {
+            tbody.innerHTML = [...filteredData].reverse().map((row, i) => {
                 let date = new Date(row[0]);
                 let strDate = `${date.getDate()}/${date.getMonth()+1} ${date.getHours()}:${date.getMinutes()}`;
                 let isVerified = row[8] === 'Verified';
