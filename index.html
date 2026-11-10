@@ -12,9 +12,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- HTML5 QrCode (Untuk Scanner Penukaran Tiket di Admin) -->
-    <script src="https://unpkg.com/html5-qrcode"></script>
-
     <style>
         body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .theater-bg { background: radial-gradient(circle at center, #1e293b 0%, #020617 100%); }
@@ -26,10 +23,6 @@
         .animate-fade { animation: fadeUp 0.6s ease-out forwards; }
         .seat-scroll::-webkit-scrollbar { height: 8px; }
         .seat-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-        /* Style Scanner UI */
-        #reader { border-radius: 8px; overflow: hidden; border: 2px solid #334155 !important; background: #0f172a; }
-        #reader button { background: #3b82f6; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; margin: 5px;}
-        #reader select { background: #1e293b; color: white; padding: 5px; border-radius: 4px; border: 1px solid #475569; font-size: 12px;}
     </style>
 </head>
 <body class="theater-bg min-h-screen">
@@ -140,6 +133,7 @@
                         </div>
                         <div>
                             <label class="block text-sm mb-1 text-slate-300">No WhatsApp (Aktif)</label>
+                            <!-- Validasi Input Nomor WA Realtime -->
                             <input type="number" id="buyerWA" placeholder="Contoh: 6289689..." required 
                                 oninput="if(this.value.length > 0 && !this.value.startsWith('62')) { document.getElementById('waWarning').classList.remove('hidden'); } else { document.getElementById('waWarning').classList.add('hidden'); }" 
                                 class="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:ring-2 focus:ring-amber-500 outline-none">
@@ -150,7 +144,7 @@
                             <select id="paymentMethod" onchange="togglePaymentInfo()" required class="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:ring-2 focus:ring-amber-500 outline-none font-semibold">
                                 <option value="" disabled selected>-- Pilih Metode --</option>
                                 <option value="Tunai">Tunai (Via Admin Kelas)</option>
-                                <option value="QRIS">QRIS / E-Wallet</option>
+                                <option value="QRIS">QRIS</option>
                                 <option value="Transfer">Transfer Bank</option>
                             </select>
                         </div>
@@ -190,15 +184,9 @@
                     <input type="text" id="searchOrderId" placeholder="Masukkan Order ID (Cth: ORD-9A-12345)" class="w-full bg-slate-900 border border-slate-600 p-4 rounded-lg mb-2 text-center font-mono text-lg uppercase text-white shadow-inner focus:ring-2 focus:ring-blue-500 outline-none">
                     <p class="text-[11px] text-amber-400 mb-4 font-semibold">⚠️ Mohon catat/simpan Nomor Order (Order ID) Anda agar tidak lupa saat pengecekan tiket.</p>
                 </div>
-                <button onclick="checkTicket()" id="btnCek" class="w-full bg-blue-600 py-3 rounded-lg font-bold hover:bg-blue-500 transition shadow-lg text-white">CEK DATABASE</button>
+                <button onclick="checkTicket()" class="w-full bg-blue-600 py-3 rounded-lg font-bold hover:bg-blue-500 transition shadow-lg text-white">CEK DATABASE</button>
                 
-                <!-- Tombol Cek Pembayaran Otomatis -->
-                <button id="btnAutoQris" onclick="simulateAutoPayment()" class="w-full bg-indigo-600 py-2 rounded-lg font-bold hover:bg-indigo-500 transition shadow-lg text-white text-xs mt-3 hidden flex items-center justify-center gap-2">
-                    🔄 CEK STATUS PEMBAYARAN OTOMATIS
-                </button>
-
                 <div id="ticketResult" class="hidden mt-8 transition-all">
-                    <!-- Box Timer Hitung Mundur -->
                     <div id="paymentTimerBox" class="mb-4 p-3 bg-amber-900/40 border border-amber-500 rounded-lg text-center hidden">
                         <p class="text-xs text-amber-300 font-bold">⏱️ Sisa Waktu Pembayaran:</p>
                         <p id="countdownTimer" class="text-lg font-mono font-black text-amber-400">23:59:59</p>
@@ -223,14 +211,8 @@
                         </div>
                         
                         <div class="p-4 relative z-10 flex-grow flex flex-col justify-between">
-                            <!-- Barcode Aktif (Awalnya Disembunyikan) -->
-                            <div id="barcodeContainer" class="text-center mb-2 bg-white/80 backdrop-blur py-2 rounded border border-slate-200 shadow-sm hidden">
+                            <div class="text-center mb-2 bg-white/80 backdrop-blur py-2 rounded border border-slate-200 shadow-sm">
                                 <svg id="barcode" class="mx-auto w-full max-h-16"></svg>
-                            </div>
-                            <!-- Pengganti Barcode Jika Belum Lunas -->
-                            <div id="unpaidContainer" class="text-center mb-2 bg-red-100 py-4 rounded border border-red-300 shadow-sm">
-                                <p class="text-sm font-black text-red-600 tracking-widest">⚠️ BELUM LUNAS</p>
-                                <p class="text-[9px] text-red-500">Barcode aktif setelah verifikasi admin / lunas.</p>
                             </div>
                             
                             <div class="grid grid-cols-2 gap-y-2 gap-x-2 text-xs bg-white/90 backdrop-blur p-3 rounded-lg border border-slate-200 shadow-sm relative">
@@ -261,7 +243,7 @@
                                     <p id="tKursi" class="font-black text-base text-amber-700 break-words leading-tight">-</p>
                                 </div>
                             </div>
-                            <div class="text-center text-[9px] text-slate-600 mt-2 font-medium">Tunjukkan tiket/barcode ini ke panitia di pintu masuk.</div>
+                            <div class="text-center text-[9px] text-slate-600 mt-2 font-medium">Tunjukkan barcode ini saat memasuki gedung pertunjukan.</div>
                         </div>
                     </div>
                     
@@ -301,15 +283,15 @@
                         <h2 class="text-2xl font-bold text-amber-400">Admin Kelas: <span id="lblAdminKelas" class="text-white"></span></h2>
                         <p class="text-xs text-slate-400 mt-1">Sistem Manajemen Teater FESTABA</p>
                     </div>
-                    <div class="flex gap-2 mt-4 md:mt-0 flex-wrap justify-center">
-                        <button onclick="toggleScannerModal()" class="bg-indigo-600 hover:bg-indigo-500 px-3 py-2 rounded text-xs font-bold shadow flex items-center gap-1">📷 SCAN TUKAR TIKET</button>
+                    <div class="flex gap-2 mt-4 md:mt-0">
                         <button onclick="exportExcel()" class="bg-emerald-600 hover:bg-emerald-500 px-3 py-2 rounded text-xs font-bold shadow flex items-center gap-1">📥 DOWNLOAD EXCEL</button>
                         <button onclick="logoutAdmin()" class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded text-xs font-bold shadow">KELUAR</button>
                     </div>
                 </div>
 
+                <!-- Pengaturan & Upload Poster A4 Portrait -->
                 <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
-                    <h3 class="text-sm font-bold text-amber-400 mb-3 uppercase tracking-wide">⚙️ Pengaturan Pementasan & Poster</h3>
+                    <h3 class="text-sm font-bold text-amber-400 mb-3 uppercase tracking-wide">⚙️ Pengaturan Pementasan & Link Poster A4 Portrait</h3>
                     <form onsubmit="updateConfigAdmin(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                         <div>
                             <label class="block text-slate-300 mb-1">Judul Naskah Teater</label>
@@ -343,22 +325,20 @@
                             <label class="block text-slate-300 mb-1">Link QRIS Google Drive</label>
                             <input type="text" id="cfgQris" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white outline-none" placeholder="Link QRIS">
                         </div>
-                        <div class="col-span-1 md:col-span-2">
-                            <label class="block text-slate-300 mb-1">Sinopsis Singkat Pertunjukan</label>
-                            <textarea id="cfgSinopsis" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white outline-none h-20" placeholder="Ketik sinopsis singkat teater di sini..."></textarea>
-                        </div>
-                        <div class="col-span-1 md:col-span-2">
+                        <div class="col-span-2">
                             <button type="submit" class="bg-amber-600 hover:bg-amber-500 font-bold text-slate-900 w-full py-2.5 rounded transition">SIMPAN PENGATURAN KELAS</button>
                         </div>
                     </form>
                 </div>
 
+                <!-- Bagian Kontrol dan Filter Table Admin -->
                 <div class="flex flex-wrap gap-3 justify-between items-center bg-slate-900 p-3 rounded border border-slate-700">
                     <div class="flex gap-2">
                         <button onclick="adminActionBulk('verify')" class="bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded text-xs font-bold shadow">✓ VERIFIKASI (LUNAS)</button>
                         <button onclick="adminActionBulk('delete')" class="bg-red-600 hover:bg-red-500 px-3 py-2 rounded text-xs font-bold shadow">🗑️ HAPUS KURSI</button>
                     </div>
                     
+                    <!-- Fitur Baru: Filter Jenis Tiket & Status Pembayaran -->
                     <div class="flex flex-wrap gap-2 items-center">
                         <span class="text-[10px] font-bold text-slate-400 tracking-wider">FILTER:</span>
                         <select id="filterTicketType" onchange="renderAdminTable()" class="bg-slate-800 border border-slate-600 rounded p-1.5 text-xs text-white outline-none font-semibold focus:ring-1 focus:ring-amber-500 cursor-pointer">
@@ -404,23 +384,7 @@
         </div>
     </div>
 
-    <!-- MODAL POPUP SCANNER KAMERA PENUKARAN TIKET FISIK -->
-    <div id="scannerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.95); z-index:9999; align-items:center; justify-content:center;">
-        <div class="relative bg-slate-800 p-6 rounded-xl border border-slate-600 shadow-2xl w-full max-w-lg text-center">
-            <h3 class="text-xl font-bold text-amber-400 mb-2">📷 Kamera Penukaran Tiket Fisik</h3>
-            <p class="text-xs text-slate-300 mb-4">Arahkan kamera ke Barcode E-Tiket pengunjung. (Hanya memproses tiket lunas).</p>
-            <div id="reader" style="width: 100%; min-height: 250px;"></div>
-            
-            <div class="mt-4 pt-4 border-t border-slate-700 flex gap-2">
-                <input type="text" id="manualScanId" placeholder="Input Manual (Jika kamera gagal)" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-xs font-mono outline-none focus:ring-1 focus:ring-blue-500">
-                <button onclick="processManualScan()" class="bg-blue-600 hover:bg-blue-500 px-4 rounded text-xs font-bold text-white shadow">PROSES</button>
-            </div>
-            <button onclick="closeScannerModal()" class="mt-6 w-full bg-red-600 py-3 rounded font-bold text-white hover:bg-red-500 transition shadow">TUTUP SCANNER</button>
-        </div>
-    </div>
-
     <script>
-        // GANTI URL INI DENGAN URL DEPLOYMENT ANDA YANG BARU!
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbyTvb1Qp-E5lNWECsUW-utPnBwiaGaBuHwmqxt8DjV6UZnZ4esZunOs8YZBNcYK5-yS/exec';
         
         let configData = [];
@@ -431,29 +395,10 @@
         let currentAdminClass = '';
         let adminDataList = [];
         let countdownInterval = null;
-        let isSubmittingOrder = false; 
-        let html5QrcodeScanner = null;
-
+        let isSubmittingOrder = false; // Mencegah double klik & double data di jaringan (Fitur 3 & 5)
+        
         const PRICES = { 'VIP': 30000, 'REG': 20000, 'UMUM': 10000 };
         const classNames = ['9A', '9B', '9C', '9D', '9E', '9F', '9G', '9H', '9I', '9J', '9K'];
-
-        // FUNGSI INTI PERBAIKAN: Pembungkus Jaringan Anti-Nyangkut (Time-Out 12 Detik)
-        async function requestGAS(url, options = {}) {
-            options.redirect = "follow";
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 12000); 
-            options.signal = controller.signal;
-
-            try {
-                const response = await fetch(url, options);
-                clearTimeout(timeoutId);
-                if (!response.ok) throw new Error("Koneksi gagal ke server Google.");
-                return await response.json();
-            } catch (error) {
-                clearTimeout(timeoutId);
-                throw error;
-            }
-        }
 
         function fixDriveUrl(url) {
             if(!url) return '';
@@ -541,16 +486,11 @@
         }
 
         async function initApp() {
-            Swal.fire({
-                title: 'Memuat Panggung...', 
-                text: 'Mengambil data dari server', 
-                allowOutsideClick: false, 
-                showConfirmButton: false,
-                didOpen: () => { Swal.showLoading(); } 
-            });
+            Swal.fire({title: 'Memuat Panggung...', text: 'Mengambil data dari server', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             
             try {
-                const result = await requestGAS(`${GAS_URL}?action=getKonfig`);
+                const response = await fetch(`${GAS_URL}?action=getKonfig`);
+                const result = await response.json();
                 if(result.status === 'success') {
                     configData = result.data.map(c => ({
                         ...c,
@@ -559,11 +499,10 @@
                     }));
                 } else { throw new Error('Data format error'); }
             } catch(e) {
-                // Fallback (Mode Dummy Jika Koneksi VS Code Diblokir)
                 configData = classNames.map(cls => ({
                     kelas: cls, judul: 'Naskah ' + cls, sutradara: 'Siswa', penulis: 'Siswa',
                     poster: 'https://via.placeholder.com/420x594/1e293b/fbbf24?text=Poster+Kelas+'+cls,
-                    tanggal: '14 Nov 2027', waktu: '19:30', rekening: 'BCA 123456', qris: '', sinopsis: 'Sinopsis belum tersedia.'
+                    tanggal: '14 Nov 2027', waktu: '19:30', rekening: 'BCA 123456', qris: ''
                 }));
             }
             
@@ -586,11 +525,7 @@
             } else {
                 switchView(lastView);
             }
-            
-            // PERBAIKAN FATAL: Menunggu 600ms sebelum ditutup agar animasi grafis loading tuntas.
-            setTimeout(() => {
-                Swal.close();
-            }, 600);
+            Swal.close();
         }
 
         window.onload = function() {
@@ -603,19 +538,16 @@
         function renderHomeGrid() {
             const grid = document.getElementById('classGrid');
             grid.innerHTML = configData.map(c => `
-                <div class="bg-slate-800 rounded-xl overflow-hidden shadow-xl border border-slate-700 hover:border-amber-500 transition group cursor-pointer flex flex-col hover:shadow-[0_0_20px_rgba(245,158,11,0.2)] h-full" onclick="openBooking('${c.kelas}')">
-                    <div class="w-full relative aspect-[1/1.414] bg-slate-900 shrink-0">
+                <div class="bg-slate-800 rounded-xl overflow-hidden shadow-xl border border-slate-700 hover:border-amber-500 transition group cursor-pointer flex flex-col hover:shadow-[0_0_20px_rgba(245,158,11,0.2)]" onclick="openBooking('${c.kelas}')">
+                    <div class="w-full relative aspect-[1/1.414] bg-slate-900">
                         <img src="${c.poster || 'https://via.placeholder.com/420x594/1e293b/fbbf24?text=FESTABA+2027'}" class="absolute top-0 left-0 w-full h-full object-cover group-hover:scale-105 transition duration-700" onerror="this.src='https://via.placeholder.com/420x594/1e293b/fbbf24?text=Poster+Error'">
                         <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent"></div>
                     </div>
-                    <div class="p-4 flex-grow flex flex-col justify-start bg-slate-900 border-t border-slate-700 relative -mt-6 z-10 rounded-t-2xl h-full">
+                    <div class="p-4 flex-grow flex flex-col justify-end bg-slate-900 border-t border-slate-700 relative -mt-6 z-10 rounded-t-2xl">
                         <span class="bg-amber-600 text-[10px] font-black px-2 py-1 rounded tracking-widest text-slate-900 w-fit mb-2">KELAS ${c.kelas}</span>
-                        <h3 class="text-xl font-bold text-white mb-1 leading-tight line-clamp-2">${c.judul}</h3>
-                        
-                        <p class="text-[11px] text-slate-300 italic mb-2 line-clamp-3 leading-tight opacity-90">${c.sinopsis}</p>
-
-                        <div class="bg-slate-800 p-2 rounded border border-slate-700 text-[11px] text-slate-400 mt-auto w-full">
-                            <p class="mb-0.5 text-amber-300 font-bold">🕒 ${c.tanggal || 'TBA'} - ${c.waktu || 'TBA'}</p>
+                        <h3 class="text-xl font-bold text-white mb-2 leading-tight line-clamp-2">${c.judul}</h3>
+                        <div class="bg-slate-800 p-2 rounded border border-slate-700 text-xs text-slate-400 mt-auto">
+                            <p class="mb-1 text-amber-300 font-semibold">🕒 ${c.tanggal || 'TBA'} - ${c.waktu || 'TBA'}</p>
                             <p>Sutradara: ${c.sutradara}</p>
                         </div>
                     </div>
@@ -631,7 +563,7 @@
             updateSelectedUI();
             document.getElementById('orderForm').reset();
             document.getElementById('buktiBase64').value = '';
-            document.getElementById('waWarning').classList.add('hidden'); 
+            document.getElementById('waWarning').classList.add('hidden'); // Sembunyikan warning bawaan form reset
             togglePaymentInfo();
 
             document.getElementById('bookingHeader').innerHTML = `
@@ -650,7 +582,8 @@
             document.getElementById('seatMap').innerHTML = '<div class="text-center py-10"><span class="animate-spin inline-block w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full"></span><p class="mt-2 text-slate-400 text-sm">Mensinkronkan kursi...</p></div>';
             
             try {
-                const result = await requestGAS(`${GAS_URL}?action=getKursiTerpakai&kelas=${kelas}`);
+                const response = await fetch(`${GAS_URL}?action=getKursiTerpakai&kelas=${kelas}`);
+                const result = await response.json();
                 bookedSeats = result.data || [];
             } catch(e) { bookedSeats = []; }
             
@@ -747,14 +680,14 @@
             container.classList.remove('hidden');
             img.classList.add('hidden');
             bank.classList.add('hidden');
-            uploadCont.classList.add('hidden'); 
+            uploadCont.classList.add('hidden'); // Sembunyikan default form foto
 
             if(method === 'Tunai') {
                 title.innerText = "Instruksi Bayar Tunai";
                 bank.classList.remove('hidden');
                 bank.innerHTML = `<span class='text-sm font-normal text-slate-300'>Segera temui Panitia / Admin Tiket</span><br><span class="text-amber-400">KELAS ${currentClassConfig.kelas}</span>`;
             } else if (method === 'Transfer' || method === 'QRIS') {
-                uploadCont.classList.remove('hidden'); 
+                uploadCont.classList.remove('hidden'); // Munculkan fitur upload karena wajib (Fitur 1)
                 if (method === 'Transfer') {
                     title.innerText = "Transfer ke Rekening:";
                     bank.classList.remove('hidden');
@@ -807,25 +740,29 @@
 
         async function submitOrder(e) {
             e.preventDefault();
-            const btn = document.getElementById('btnSubmit');
-
+            
+            // PENCEGAHAN DOUBLE SUBMIT - Jika masih loading/terkunci (Fitur 5)
             if(isSubmittingOrder) return; 
 
             if(selectedSeats.length === 0) return Swal.fire('Pilih Kursi', 'Silakan klik kursi yang tersedia.', 'warning');
             
+            // VALIDASI NOMOR WA (Fitur 4)
             const waInput = document.getElementById('buyerWA').value.trim();
             if (!waInput.startsWith('62')) {
                 document.getElementById('buyerWA').focus();
                 return Swal.fire('Format Nomor Salah', 'Nomor WhatsApp WAJIB diawali dengan kode negara 62 (Contoh: 62896...).', 'error');
             }
 
+            // VALIDASI WAJIB UPLOAD BUKTI (Fitur 1)
             const method = document.getElementById('paymentMethod').value;
             const buktiBase64 = document.getElementById('buktiBase64').value;
             if ((method === 'QRIS' || method === 'Transfer') && !buktiBase64) {
                 return Swal.fire('Bukti Pembayaran Wajib', 'Mohon unggah foto/screenshot bukti transfer Anda terlebih dahulu.', 'error');
             }
             
+            // MENGUNCI TOMBOL DAN SET STATUS SUBMIT (Fitur 3 & 5)
             isSubmittingOrder = true;
+            const btn = document.getElementById('btnSubmit');
             btn.innerHTML = `⏳ MEMPROSES...`;
             btn.disabled = true;
 
@@ -842,10 +779,11 @@
             };
 
             try {
-                const data = await requestGAS(GAS_URL, { 
+                const res = await fetch(GAS_URL, { 
                     method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'},
                     body: JSON.stringify(payload) 
                 });
+                const data = await res.json();
                 
                 if(data.status === 'success') {
                     Swal.fire({
@@ -862,33 +800,33 @@
                     openBooking(currentClassConfig.kelas, false);
                 }
             } catch (err) {
-                Swal.fire('Error Network', 'Terjadi kesalahan komunikasi dengan server Google.', 'error');
+                Swal.fire('Error Network', 'Terjadi kesalahan komunikasi dengan server.', 'error');
             } 
             
+            // Melepaskan kuncian tombol dengan delay minimal 1.5 detik (Real time duration fiture / Anti Spam click)
             setTimeout(() => {
                 isSubmittingOrder = false;
                 btn.disabled = false;
                 btn.innerText = "PESAN TIKET";
-            }, 1000); 
+            }, 1500); 
         }
 
         async function checkTicket() {
             const id = document.getElementById('searchOrderId').value.trim().toUpperCase();
             if(!id) return Swal.fire('Data Kosong', 'Ketik Order ID Anda.', 'warning');
             
-            const btn = document.getElementById('btnCek');
+            const btn = event.target;
             const originalText = btn.innerHTML;
-            btn.innerHTML = `⏳ MENCARI...`;
+            btn.innerHTML = `MENCARI...`;
             btn.disabled = true;
             
             try {
-                const result = await requestGAS(`${GAS_URL}?action=cekTiket&orderId=${id}`);
+                const res = await fetch(`${GAS_URL}?action=cekTiket&orderId=${id}`);
+                const result = await res.json();
                 
                 if(result.status === 'success') {
                     const dt = result.data;
                     document.getElementById('ticketResult').classList.remove('hidden');
-                    document.getElementById('btnAutoQris').classList.remove('hidden'); 
-                    
                     document.getElementById('tOrderId').innerText = dt.orderId;
                     document.getElementById('tNama').innerText = dt.nama;
                     document.getElementById('tKelas').innerText = `KELAS ${dt.kelas}`;
@@ -901,22 +839,15 @@
 
                     const st = document.getElementById('tStatus');
                     const btnDl = document.getElementById('btnDownload');
-                    const barcodeCont = document.getElementById('barcodeContainer');
-                    const unpaidCont = document.getElementById('unpaidContainer');
+                    const barcode = document.getElementById('barcode');
                     const timerBox = document.getElementById('paymentTimerBox');
-                    const svgBarcode = document.getElementById('barcode');
-                    svgBarcode.innerHTML = '';
+                    barcode.innerHTML = '';
                     
                     if(dt.status === 'Verified') {
                         st.innerText = 'LUNAS (VERIFIED)';
                         st.className = 'font-black text-sm text-emerald-600';
                         btnDl.classList.remove('hidden');
                         timerBox.classList.add('hidden');
-                        
-                        barcodeCont.classList.remove('hidden');
-                        unpaidCont.classList.add('hidden');
-                        document.getElementById('btnAutoQris').classList.add('hidden'); 
-
                         if(countdownInterval) clearInterval(countdownInterval);
                         JsBarcode("#barcode", dt.orderId, { format: "CODE128", displayValue: false, height: 50, background: "transparent", lineColor: "#0f172a", margin: 0 });
                     } else {
@@ -924,48 +855,24 @@
                         st.className = 'font-black text-sm text-red-600 animate-pulse';
                         btnDl.classList.add('hidden');
                         timerBox.classList.remove('hidden');
-                        
-                        barcodeCont.classList.add('hidden');
-                        unpaidCont.classList.remove('hidden');
-
-                        startCountdown(dt.timestamp);
+                        startCountdown(dt.timestamp || new Date().getTime());
+                        barcode.innerHTML = `<rect width="100%" height="50" fill="#f87171" opacity="0.1"/><text y="25" x="50%" dominant-baseline="middle" text-anchor="middle" class="text-sm font-black fill-red-600 font-sans tracking-widest">BELUM LUNAS</text>`;
                     }
                     document.getElementById('ticketResult').scrollIntoView({behavior: "smooth", block: "start"});
                 } else {
-                    Swal.fire('Tiket Tidak Ditemukan', 'Pastikan Order ID benar atau belum kadaluarsa.', 'error');
+                    Swal.fire('Tiket Tidak Ditemukan', 'Pastikan Order ID benar atau belum expired.', 'error');
                     document.getElementById('ticketResult').classList.add('hidden');
-                    document.getElementById('btnAutoQris').classList.add('hidden');
                 }
             } catch(e) {
-                Swal.fire('Error Network', 'Gagal menghubungi server.', 'error');
+                Swal.fire('Error', 'Gagal membaca database.', 'error');
             }
-            btn.innerHTML = originalText;
+            btn.innerText = originalText;
             btn.disabled = false;
         }
 
-        function simulateAutoPayment() {
-            Swal.fire({
-                title: 'Mengecek Server Bank...',
-                text: 'Menghubungkan ke API Payment Gateway...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-            setTimeout(() => {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Belum Terhubung dengan Bank API',
-                    html: `Pengecekan gagal. Untuk memverifikasi <b>otomatis secara real-time</b>, sistem Anda membutuhkan koneksi ke <b>Payment Gateway</b> (seperti Midtrans) untuk membaca mutasi rekening otomatis.<br><br><b>Solusi ke-2:</b> Tim Admin akan mengecek bukti pembayaran Anda dan memverifikasi secara manual.`,
-                    confirmButtonText: 'Mengerti',
-                }).then(() => {
-                    checkTicket();
-                });
-            }, 2500);
-        }
-
-        function startCountdown(orderTimeRaw) {
+        function startCountdown(orderTime) {
             if(countdownInterval) clearInterval(countdownInterval);
-            let orderDate = new Date(orderTimeRaw);
-            let targetTime = orderDate.getTime() + (24 * 60 * 60 * 1000); 
+            let targetTime = new Date(orderTime).getTime() + (24 * 60 * 60 * 1000);
             
             countdownInterval = setInterval(() => {
                 let now = new Date().getTime();
@@ -992,7 +899,7 @@
             const card = document.getElementById('ticketCard');
             const btn = document.getElementById('btnDownload');
             const orderId = document.getElementById('tOrderId').innerText;
-            btn.innerHTML = `⏳ MEMPROSES...`;
+            btn.innerHTML = `MEMPROSES...`;
             btn.disabled = true;
             
             html2canvas(card, { scale: 3, useCORS: true, backgroundColor: '#ffffff', logging: false }).then(canvas => {
@@ -1004,7 +911,7 @@
                 btn.disabled = false;
                 Swal.fire('Berhasil Download!', 'Tiket tersimpan di perangkat Anda.', 'success', 3000);
             }).catch(err => {
-                Swal.fire('Gagal Render', 'Silakan screenshot manual layar Anda.', 'error');
+                Swal.fire('Gagal Render', 'Silakan screenshot manual.', 'error');
                 btn.innerHTML = `DOWNLOAD E-TIKET (.JPG)`;
                 btn.disabled = false;
             });
@@ -1021,15 +928,16 @@
             const kls = document.getElementById('adminKelas').value;
             const pwd = document.getElementById('adminPassword').value;
             const btn = document.getElementById('btnLogin');
-            btn.innerHTML = `⏳ MENGOTENTIKASI...`;
+            btn.innerHTML = `MENGOTENTIKASI...`;
             btn.disabled = true;
             
             try {
-                const data = await requestGAS(GAS_URL, {
+                const res = await fetch(GAS_URL, {
                     method: 'POST',
                     headers: {'Content-Type': 'text/plain;charset=utf-8'},
                     body: JSON.stringify({action: 'adminLogin', kelas: kls, password: pwd})
                 });
+                const data = await res.json();
                 
                 if(data.status === 'success') {
                     currentAdminClass = kls;
@@ -1043,7 +951,7 @@
                     Swal.fire('Ditolak', 'Password salah untuk kelas ' + kls, 'error');
                 }
             } catch(e) {
-                Swal.fire('Error Network', 'Sistem gagal menghubungi server admin.', 'error');
+                Swal.fire('Error', 'Sistem gagal menghubungi server admin.', 'error');
             }
             btn.innerText = "MASUK PANEL ADMIN";
             btn.disabled = false;
@@ -1060,7 +968,6 @@
                 document.getElementById('cfgWaktu').value = cfg.waktu || '';
                 document.getElementById('cfgRekening').value = cfg.rekening || '';
                 document.getElementById('cfgQris').value = cfg.qris || '';
-                document.getElementById('cfgSinopsis').value = (cfg.sinopsis && cfg.sinopsis !== 'Sinopsis belum tersedia.') ? cfg.sinopsis : ''; 
             }
         }
 
@@ -1076,24 +983,22 @@
                 tanggal: document.getElementById('cfgTanggal').value,
                 waktu: document.getElementById('cfgWaktu').value,
                 rekening: document.getElementById('cfgRekening').value,
-                qris: document.getElementById('cfgQris').value,
-                sinopsis: document.getElementById('cfgSinopsis').value 
+                qris: document.getElementById('cfgQris').value
             };
 
             Swal.fire({title: 'Menyimpan Konfigurasi...', allowOutsideClick: false, didOpen: ()=>Swal.showLoading()});
             try {
-                const data = await requestGAS(GAS_URL, {
+                const res = await fetch(GAS_URL, {
                     method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'},
                     body: JSON.stringify(payload)
                 });
-                
+                const data = await res.json();
                 if(data.status === 'success') {
-                    Swal.fire('Berhasil', 'Konfigurasi berhasil diperbarui.', 'success').then(() => {
-                        initApp();
-                    });
+                    Swal.fire('Berhasil', 'Konfigurasi pementasan dan poster kelas berhasil diperbarui.', 'success');
+                    initApp();
                 } else { throw new Error(data.message); }
             } catch(err) {
-                Swal.fire('Error Jaringan', 'Gagal menyimpan ke server.', 'error');
+                Swal.fire('Error', 'Gagal menyimpan ke server.', 'error');
             }
         }
 
@@ -1108,11 +1013,12 @@
         async function loadAdminData() {
             const tbody = document.getElementById('adminTableBody');
             const btnRefresh = document.getElementById('btnRefresh');
-            btnRefresh.innerHTML = `⏳ ...`;
+            btnRefresh.innerHTML = `...`;
             tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-amber-500 font-bold">Mengambil data tiket...</td></tr>';
             
             try {
-                const result = await requestGAS(`${GAS_URL}?action=getAdminData&kelas=${currentAdminClass}`);
+                const res = await fetch(`${GAS_URL}?action=getAdminData&kelas=${currentAdminClass}`);
+                const result = await res.json();
                 if(result.status === 'success') {
                     adminDataList = result.data;
                     renderAdminTable();
@@ -1123,6 +1029,7 @@
             btnRefresh.innerHTML = `🔄 REFRESH`;
         }
 
+        // Fungsi membuka Modal Preview Foto Ukuran Besar (Aman dari Top-Frame Error)
         function bukaModalFoto(base64Url) {
             if (!base64Url) return;
             const modal = document.getElementById('fotoModal');
@@ -1131,16 +1038,13 @@
             modal.style.display = 'flex';
         }
 
+        // Peningkatan Fitur 2: Filter Dinamis Data Table Admin
         function renderAdminTable() {
             const tbody = document.getElementById('adminTableBody');
             const filterType = document.getElementById('filterTicketType') ? document.getElementById('filterTicketType').value : 'ALL';
             const filterStatus = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : 'ALL';
 
-            if (!adminDataList || adminDataList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-slate-400">Belum ada pemesan untuk kelas ini.</td></tr>';
-                return;
-            }
-
+            // Menyaring data berdasar dropdown filter
             let filteredData = adminDataList.filter(row => {
                 let jenis = row[3]; 
                 let isVerified = (row[8] === 'Verified');
@@ -1153,7 +1057,7 @@
             });
 
             if(filteredData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-slate-400">Tidak ada tiket yang cocok dengan filter.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-slate-400">Tidak ada tiket yang cocok dengan filter yang dipilih.</td></tr>';
                 return;
             }
             
@@ -1161,13 +1065,8 @@
                 let date = new Date(row[0]);
                 let strDate = `${date.getDate()}/${date.getMonth()+1} ${date.getHours()}:${date.getMinutes()}`;
                 let isVerified = row[8] === 'Verified';
-                let statusTukar = row[10]; 
-                
                 let statusColor = isVerified ? 'text-emerald-400 bg-emerald-900/30' : 'text-amber-400 bg-amber-900/30 animate-pulse';
                 let txtStatus = isVerified ? 'LUNAS' : 'MENUNGGU BAYAR';
-                
-                let badgeTukar = statusTukar === 'SUDAH DITUKAR' ? `<br><span class="inline-block mt-1 px-1.5 py-0.5 bg-indigo-600 text-white text-[9px] rounded font-bold shadow">✅ DITUKAR (FISIK)</span>` : '';
-
                 let kursiText = row[4].split('-').slice(1).join('-');
                 let waNumber = row[6].toString().replace(/^0/, '62');
                 let buyerName = row[5];
@@ -1207,12 +1106,11 @@
                         ${buktiHtml}
                     </td>
                     <td class="p-3 space-x-1">
-                        <a href="https://wa.me/${waNumber}?text=${msgReminder}" target="_blank" class="inline-block bg-emerald-700 hover:bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-bold mb-1">💬 Kirim Reminder WA</a>
+                        <a href="https://wa.me/${waNumber}?text=${msgReminder}" target="_blank" class="inline-block bg-emerald-700 hover:bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-bold">💬 Kirim Reminder WA</a>
                         <a href="https://wa.me/${waNumber}?text=${msgExpired}" target="_blank" class="inline-block bg-red-700 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold">⚠️ Info Kadaluarsa</a>
                     </td>
                     <td class="p-3">
                         <span class="px-2 py-1 rounded text-[10px] font-bold tracking-wider border ${isVerified ? 'border-emerald-500/50' : 'border-amber-500/50'} ${statusColor}">${txtStatus}</span>
-                        ${badgeTukar}
                     </td>
                 </tr>`;
             }).join('');
@@ -1236,25 +1134,25 @@
 
             Swal.fire({title: 'Memproses...', allowOutsideClick: false, didOpen: ()=>Swal.showLoading()});
             try {
-                const data = await requestGAS(GAS_URL, {
+                const res = await fetch(GAS_URL, {
                     method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'},
                     body: JSON.stringify({action: 'adminActionBulk', kelas: currentAdminClass, type: type, targets: targets})
                 });
-                
+                const data = await res.json();
                 if(data.status === 'success') {
                     Swal.fire('Berhasil', 'Data di server telah diupdate.', 'success');
                     document.getElementById('selectAll').checked = false;
                     loadAdminData();
                 } else { throw new Error(data.message); }
             } catch(e) {
-                Swal.fire('Error Jaringan', 'Gagal memproses koneksi.', 'error');
+                Swal.fire('Error', 'Gagal memproses koneksi.', 'error');
             }
         }
 
         function exportExcel() {
             if (!adminDataList || adminDataList.length === 0) return Swal.fire('Data Kosong', 'Tidak ada data untuk kelas ini.', 'warning');
             
-            let tsv = "Waktu Pesan\tOrder ID\tKelas\tJenis Tiket\tNomor Kursi\tNama Pemesan\tNo WhatsApp\tMetode Pembayaran\tStatus Pembayaran\tLink Bukti Bayar\tStatus Penukaran\n";
+            let tsv = "Waktu Pesan\tOrder ID\tKelas\tJenis Tiket\tNomor Kursi\tNama Pemesan\tNo WhatsApp\tMetode Pembayaran\tStatus Pembayaran\tLink Bukti Bayar\n";
             adminDataList.forEach(row => {
                 let cleanRow = row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`);
                 tsv += cleanRow.join("\t") + "\n";
@@ -1267,79 +1165,6 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-        }
-
-        function toggleScannerModal() {
-            document.getElementById('scannerModal').style.display = 'flex';
-            
-            html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader", { fps: 10, qrbox: {width: 250, height: 250}, experimentalFeatures: { useBarCodeDetectorIfSupported: true }, rememberLastUsedCamera: true }, false);
-            
-            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-        }
-
-        function closeScannerModal() {
-            document.getElementById('scannerModal').style.display = 'none';
-            if (html5QrcodeScanner) {
-                try {
-                    html5QrcodeScanner.clear();
-                } catch(e) {
-                    console.log("Scanner sudah ditutup.");
-                }
-            }
-        }
-
-        async function onScanSuccess(decodedText, decodedResult) {
-            if (html5QrcodeScanner) html5QrcodeScanner.pause();
-            await processTukarTiket(decodedText);
-        }
-
-        function onScanFailure(error) {}
-
-        async function processManualScan() {
-            const manualVal = document.getElementById('manualScanId').value.trim().toUpperCase();
-            if (!manualVal) return Swal.fire('Error', 'Input ID Manual Kosong!', 'error');
-            await processTukarTiket(manualVal);
-            document.getElementById('manualScanId').value = '';
-        }
-
-        async function processTukarTiket(orderId) {
-            Swal.fire({title: 'Memverifikasi Tiket...', text: 'Mengecek ID: ' + orderId, allowOutsideClick: false, didOpen: ()=>Swal.showLoading()});
-            
-            try {
-                const data = await requestGAS(GAS_URL, {
-                    method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'},
-                    body: JSON.stringify({action: 'tukarTiket', kelas: currentAdminClass, orderId: orderId})
-                });
-                
-                if (data.status === 'success') {
-                    Swal.fire({
-                        icon: 'success', title: 'TIKET VALID (LUNAS)',
-                        text: data.message, confirmButtonText: 'LANJUTKAN SCAN'
-                    }).then(() => {
-                        if (html5QrcodeScanner) html5QrcodeScanner.resume();
-                        loadAdminData(); 
-                    });
-                } else if (data.status === 'warning') {
-                    Swal.fire({
-                        icon: 'warning', title: 'TOLAK!',
-                        text: data.message, confirmButtonText: 'LANJUTKAN SCAN'
-                    }).then(() => {
-                        if (html5QrcodeScanner) html5QrcodeScanner.resume();
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error', title: 'TIKET TIDAK DITEMUKAN',
-                        text: data.message, confirmButtonText: 'LANJUTKAN SCAN'
-                    }).then(() => {
-                        if (html5QrcodeScanner) html5QrcodeScanner.resume();
-                    });
-                }
-            } catch(e) {
-                Swal.fire('Error Koneksi', 'Gagal memproses jaringan server.', 'error').then(() => {
-                    if (html5QrcodeScanner) html5QrcodeScanner.resume();
-                });
-            }
         }
     </script>
 </body>
