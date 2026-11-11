@@ -228,7 +228,7 @@
                             </div>
                             <!-- Fitur 4: Pengganti Barcode Jika Belum Lunas -->
                             <div id="unpaidContainer" class="text-center mb-2 bg-red-100 py-4 rounded border border-red-300 shadow-sm">
-                                <p class="text-sm font-black text-red-600 tracking-widest">⚠️ BELUM LUNAS</p>
+                                <p class="text-sm font-black text-red-600 tracking-widest" id="lblUnpaidText">⚠️ BELUM LUNAS</p>
                                 <p class="text-[9px] text-red-500">Barcode aktif setelah verifikasi admin / lunas.</p>
                             </div>
                             
@@ -354,12 +354,27 @@
                     </form>
                 </div>
 
-                <div class="flex gap-2 bg-slate-900 p-3 rounded border border-slate-700 justify-between items-center">
-                    <div>
+                <!-- Bagian FILTER TIKET DITAMBAHKAN DI SINI -->
+                <div class="flex flex-wrap gap-2 bg-slate-900 p-3 rounded border border-slate-700 justify-between items-center">
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <select id="filterJenis" onchange="renderAdminTable()" class="bg-slate-800 border border-slate-600 rounded p-2 text-xs font-bold text-white outline-none shadow focus:ring-1 focus:ring-amber-500">
+                            <option value="SEMUA">Semua Kelas Tiket</option>
+                            <option value="VIP">Tipe: VIP</option>
+                            <option value="REG">Tipe: Reguler</option>
+                            <option value="UMUM">Tipe: Umum</option>
+                        </select>
+                        <select id="filterStatus" onchange="renderAdminTable()" class="bg-slate-800 border border-slate-600 rounded p-2 text-xs font-bold text-white outline-none shadow focus:ring-1 focus:ring-amber-500">
+                            <option value="SEMUA">Semua Status Bayar</option>
+                            <option value="Verified">Hanya Lunas</option>
+                            <option value="Menunggu Pembayaran">Hanya Belum Lunas</option>
+                            <option value="Expired">Hanya Expired</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2 mt-2 sm:mt-0">
                         <button onclick="adminActionBulk('verify')" class="bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded text-xs font-bold shadow">✓ VERIFIKASI (LUNAS)</button>
                         <button onclick="adminActionBulk('delete')" class="bg-red-600 hover:bg-red-500 px-3 py-2 rounded text-xs font-bold shadow">🗑️ HAPUS KURSI</button>
+                        <button onclick="loadAdminData()" id="btnRefresh" class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded text-xs font-bold shadow">🔄 REFRESH</button>
                     </div>
-                    <button onclick="loadAdminData()" id="btnRefresh" class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded text-xs font-bold shadow">🔄 REFRESH</button>
                 </div>
 
                 <div class="overflow-x-auto rounded border border-slate-700 bg-slate-900 shadow-inner">
@@ -427,7 +442,7 @@
         const PRICES = { 'VIP': 30000, 'REG': 20000, 'UMUM': 10000 };
         const classNames = ['9A', '9B', '9C', '9D', '9E', '9F', '9G', '9H', '9I', '9J', '9K'];
 
-        // --- SAFE STORAGE WRAPPER (MEMPERBAIKI BUG TRACKING PREVENTION) ---
+        // --- SAFE STORAGE WRAPPER ---
         function safeGetSession(key) {
             try { return sessionStorage.getItem(key); } catch(e) { return null; }
         }
@@ -544,7 +559,6 @@
                     }));
                 } else { throw new Error('Data format error'); }
             } catch(e) {
-                // Dummy data jika gagal load
                 configData = classNames.map(cls => ({
                     kelas: cls, judul: 'Naskah ' + cls, sutradara: 'Siswa', penulis: 'Siswa',
                     poster: 'https://via.placeholder.com/420x594/1e293b/fbbf24?text=Poster+Kelas+'+cls,
@@ -575,7 +589,6 @@
             } catch (err) {
                 console.error("UI Error:", err);
             } finally {
-                // BLOCK INI MENJAMIN LOADING SELALU TERTUTUP APAPUN YANG TERJADI
                 setTimeout(() => { Swal.close(); }, 600);
             }
         }
@@ -871,7 +884,7 @@
                 if(result.status === 'success') {
                     const dt = result.data;
                     document.getElementById('ticketResult').classList.remove('hidden');
-                    document.getElementById('btnAutoQris').classList.remove('hidden'); // Memunculkan tombol auto (Fitur 3)
+                    document.getElementById('btnAutoQris').classList.remove('hidden'); 
                     
                     document.getElementById('tOrderId').innerText = dt.orderId;
                     document.getElementById('tNama').innerText = dt.nama;
@@ -897,24 +910,39 @@
                         btnDl.classList.remove('hidden');
                         timerBox.classList.add('hidden');
                         
-                        // Fitur 4: BARCODE AKTIF JIKA LUNAS
                         barcodeCont.classList.remove('hidden');
                         unpaidCont.classList.add('hidden');
-                        document.getElementById('btnAutoQris').classList.add('hidden'); // Hilangkan tombol auto cek karena sudah lunas
+                        document.getElementById('btnAutoQris').classList.add('hidden'); 
 
                         if(countdownInterval) clearInterval(countdownInterval);
                         JsBarcode("#barcode", dt.orderId, { format: "CODE128", displayValue: false, height: 50, background: "transparent", lineColor: "#0f172a", margin: 0 });
+                    } else if (dt.status === 'Expired') {
+                        st.innerText = 'EXPIRED (KADALUARSA)';
+                        st.className = 'font-black text-sm text-gray-500';
+                        btnDl.classList.add('hidden');
+                        timerBox.classList.add('hidden');
+                        
+                        barcodeCont.classList.add('hidden');
+                        unpaidCont.classList.remove('hidden');
+                        
+                        document.getElementById('lblUnpaidText').innerText = "❌ TIKET EXPIRED";
+                        document.getElementById('lblUnpaidText').classList.replace('text-red-600', 'text-gray-600');
+                        unpaidCont.classList.replace('bg-red-100', 'bg-gray-200');
+
+                        if(countdownInterval) clearInterval(countdownInterval);
                     } else {
                         st.innerText = 'MENUNGGU PEMBAYARAN';
                         st.className = 'font-black text-sm text-red-600 animate-pulse';
                         btnDl.classList.add('hidden');
                         timerBox.classList.remove('hidden');
                         
-                        // Fitur 4: BARCODE HILANG JIKA BELUM LUNAS
                         barcodeCont.classList.add('hidden');
                         unpaidCont.classList.remove('hidden');
+                        
+                        document.getElementById('lblUnpaidText').innerText = "⚠️ BELUM LUNAS";
+                        document.getElementById('lblUnpaidText').classList.replace('text-gray-600', 'text-red-600');
+                        unpaidCont.classList.replace('bg-gray-200', 'bg-red-100');
 
-                        // Fitur 2: TIMER MUNDUR REALTIME BERDASARKAN TIMESTAMP SERVER
                         startCountdown(dt.timestamp);
                     }
                     document.getElementById('ticketResult').scrollIntoView({behavior: "smooth", block: "start"});
@@ -950,13 +978,12 @@
             }, 2500);
         }
 
-        // Fitur 2: Timer Hitung Mundur Real-Time yang Akurat (24 jam dari waktu server)
         function startCountdown(orderTimeRaw) {
             if(countdownInterval) clearInterval(countdownInterval);
             
             let orderDate = new Date(orderTimeRaw);
-            if(isNaN(orderDate.getTime())) orderDate = new Date(); // Failsafe fallback
-            let targetTime = orderDate.getTime() + (24 * 60 * 60 * 1000); // 24 Jam dari pesanan asli
+            if(isNaN(orderDate.getTime())) orderDate = new Date(); 
+            let targetTime = orderDate.getTime() + (24 * 60 * 60 * 1000); 
             
             countdownInterval = setInterval(() => {
                 let now = new Date().getTime();
@@ -1052,7 +1079,7 @@
                 document.getElementById('cfgWaktu').value = cfg.waktu || '';
                 document.getElementById('cfgRekening').value = cfg.rekening || '';
                 document.getElementById('cfgQris').value = cfg.qris || '';
-                document.getElementById('cfgSinopsis').value = (cfg.sinopsis && cfg.sinopsis !== 'Sinopsis belum tersedia.') ? cfg.sinopsis : ''; // Fitur 1
+                document.getElementById('cfgSinopsis').value = (cfg.sinopsis && cfg.sinopsis !== 'Sinopsis belum tersedia.') ? cfg.sinopsis : ''; 
             }
         }
 
@@ -1069,7 +1096,7 @@
                 waktu: document.getElementById('cfgWaktu').value,
                 rekening: document.getElementById('cfgRekening').value,
                 qris: document.getElementById('cfgQris').value,
-                sinopsis: document.getElementById('cfgSinopsis').value // Fitur 1
+                sinopsis: document.getElementById('cfgSinopsis').value 
             };
 
             Swal.fire({title: 'Menyimpan Konfigurasi...', allowOutsideClick: false, didOpen: ()=>Swal.showLoading()});
@@ -1107,7 +1134,7 @@
                 const result = await res.json();
                 if(result.status === 'success') {
                     adminDataList = result.data;
-                    renderAdminTable();
+                    renderAdminTable(); // Akan memanggil render beserta filternya
                 } else { throw new Error(); }
             } catch(e) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-red-500 font-bold">Gagal memuat data.</td></tr>';
@@ -1123,23 +1150,43 @@
             modal.style.display = 'flex';
         }
 
+        // ===============================================
+        // FUNGSI RENDER TABLE DAN FITUR FILTER BARU DISINI
+        // ===============================================
         function renderAdminTable() {
             const tbody = document.getElementById('adminTableBody');
+            const filterJenis = document.getElementById('filterJenis').value;
+            const filterStatus = document.getElementById('filterStatus').value;
+            
             if (!adminDataList || adminDataList.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-slate-400">Belum ada pemesan untuk kelas ini.</td></tr>';
                 return;
             }
             
-            tbody.innerHTML = [...adminDataList].reverse().map((row, i) => {
+            // Logic Filtering Data
+            let filteredData = [...adminDataList].reverse().filter(row => {
+                let checkJenis = (filterJenis === 'SEMUA') ? true : (row[3] === filterJenis);
+                let checkStatus = (filterStatus === 'SEMUA') ? true : (row[8] === filterStatus);
+                return checkJenis && checkStatus;
+            });
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-slate-400">Tidak ada tiket sesuai filter.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = filteredData.map((row, i) => {
                 let date = new Date(row[0]);
                 let strDate = `${date.getDate()}/${date.getMonth()+1} ${date.getHours()}:${date.getMinutes()}`;
+                
                 let isVerified = row[8] === 'Verified';
-                let statusTukar = row[10]; // Kolom ke 11 berisi Status Tukar
+                let isExpired = row[8] === 'Expired'; // Identifikasi flag expired dari server
+                let statusTukar = row[10]; // Kolom ke 11 berisi Status Tukar Fisik
                 
-                let statusColor = isVerified ? 'text-emerald-400 bg-emerald-900/30' : 'text-amber-400 bg-amber-900/30 animate-pulse';
-                let txtStatus = isVerified ? 'LUNAS' : 'MENUNGGU BAYAR';
+                let statusColor = isVerified ? 'text-emerald-400 bg-emerald-900/30' : (isExpired ? 'text-gray-400 bg-gray-900/30' : 'text-amber-400 bg-amber-900/30 animate-pulse');
+                let txtStatus = isVerified ? 'LUNAS' : (isExpired ? 'EXPIRED' : 'MENUNGGU BAYAR');
                 
-                // Menambahkan Badge Visual di Admin jika sudah Ditukar Fisik (Fitur 5)
+                // Menambahkan Badge Visual di Admin jika sudah Ditukar Fisik
                 let badgeTukar = statusTukar === 'SUDAH DITUKAR' ? `<br><span class="inline-block mt-1 px-1.5 py-0.5 bg-indigo-600 text-white text-[9px] rounded font-bold shadow">✅ DITUKAR (FISIK)</span>` : '';
 
                 let kursiText = row[4].split('-').slice(1).join('-');
@@ -1185,7 +1232,7 @@
                         <a href="https://wa.me/${waNumber}?text=${msgExpired}" target="_blank" class="inline-block bg-red-700 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold">⚠️ Info Kadaluarsa</a>
                     </td>
                     <td class="p-3">
-                        <span class="px-2 py-1 rounded text-[10px] font-bold tracking-wider border ${isVerified ? 'border-emerald-500/50' : 'border-amber-500/50'} ${statusColor}">${txtStatus}</span>
+                        <span class="px-2 py-1 rounded text-[10px] font-bold tracking-wider border ${isVerified ? 'border-emerald-500/50' : (isExpired ? 'border-gray-500/50' : 'border-amber-500/50')} ${statusColor}">${txtStatus}</span>
                         ${badgeTukar}
                     </td>
                 </tr>`;
@@ -1243,13 +1290,9 @@
             document.body.removeChild(link);
         }
 
-        // ==========================================
-        // FITUR 5: SISTEM SCANNER KAMERA UNTUK ADMIN
-        // ==========================================
         function toggleScannerModal() {
             document.getElementById('scannerModal').style.display = 'flex';
             
-            // Inisialisasi library HTML5-QRCode
             html5QrcodeScanner = new Html5QrcodeScanner(
                 "reader", { fps: 10, qrbox: {width: 250, height: 250}, experimentalFeatures: { useBarCodeDetectorIfSupported: true }, rememberLastUsedCamera: true }, false);
             
@@ -1268,13 +1311,11 @@
         }
 
         async function onScanSuccess(decodedText, decodedResult) {
-            // Hentikan scan sementara saat memproses data ke server
             if (html5QrcodeScanner) html5QrcodeScanner.pause();
             await processTukarTiket(decodedText);
         }
 
         function onScanFailure(error) {
-            // Abaikan peringatan kosong (silent error saat mencari fokus)
         }
 
         async function processManualScan() {
@@ -1300,7 +1341,7 @@
                         text: data.message, confirmButtonText: 'LANJUTKAN SCAN'
                     }).then(() => {
                         if (html5QrcodeScanner) html5QrcodeScanner.resume();
-                        loadAdminData(); // Refresh tabel admin
+                        loadAdminData(); 
                     });
                 } else if (data.status === 'warning') {
                     Swal.fire({
